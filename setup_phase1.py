@@ -31,7 +31,7 @@ def check_libs():
         "qdrant_client": "qdrant_client",
         "dotenv": "dotenv",
     }
-    import importlib
+    import importlib.util
     missing = [pkg for pkg, mod in libs.items() if importlib.util.find_spec(mod) is None]
     if missing:
         print(f"  [ERROR] Missing packages: {', '.join(missing)}")
