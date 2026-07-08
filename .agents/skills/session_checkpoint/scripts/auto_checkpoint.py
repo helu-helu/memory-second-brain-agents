@@ -128,7 +128,13 @@ def main():
 
 > AI automatically generated this checkpoint based on git diff.
 
-## 📂 Modified files in this session
+## 🛠️ Kiến Trúc Dự Án & Xác Minh (Project Stack & Verification)
+- **AI Models:** Gemini 2.5 Flash (Trích xuất Mem0) + Gemini Embedding 2 (Vector)
+- **Cơ sở dữ liệu:** Qdrant local (`./db/qdrant_mem0`) + SQLite (`./db/mem0_history.db`)
+- **Tài liệu RAG:** Nạp từ thư mục `./docs/` (chứa tài liệu Unity 6.3)
+- **Lệnh xác minh hệ thống:** `python setup_phase1.py` (chạy bằng Python 3.13)
+
+## 📂 Các file đã chỉnh sửa trong session này (Git)
 """
     if changes_list:
         checkpoint_content += "\n".join(f"- `{f}`" for f in changes_list) + "\n\n"
