@@ -1,0 +1,19 @@
+# Thư viện cho Giai đoạn 1: Mem0 + LlamaIndex RAG
+# Dùng với Gemini API (Google AI Studio)
+
+# === MEM0 ===
+mem0ai>=0.1.0
+
+# === LLAMAINDEX (RAG) ===
+llama-index-core>=0.11.0
+llama-index-embeddings-gemini>=0.2.0
+llama-index-llms-gemini>=0.3.0
+llama-index-readers-file>=0.2.0
+llama-index-vector-stores-qdrant>=0.3.0
+
+# === VECTOR DATABASE (Local) ===
+qdrant-client>=1.7.0
+
+# === UTILS ===
+python-dotenv>=1.0.0
+rich>=13.0.0
