@@ -1,70 +1,44 @@
-# ============================================================
-# .gitignore — Memory and Second Brain for Agents
-# ============================================================
-
-# === DỮ LIỆU CỤC BỘ (không commit — thuộc về máy từng người) ===
-# Vector DB và SQLite (tự động tạo khi chạy)
-db/
-*.db
-*.db-shm
-*.db-wal
-
-# Thư mục tài liệu RAG (lớn, quản lý riêng ngoài Git)
-# Dùng Git LFS hoặc chia sẻ qua link nếu cần
-docs/
-
-# File tạm và checkpoint
-scratch/
-
-# === API KEY VÀ BIẾN MÔI TRƯỜNG (BÍ MẬT) ===
-.env
-*.env.local
-*.env.*.local
-
-# === PYTHON ===
+# Python Cache
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
 *.pyo
 *.pyd
-.Python
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
-*.egg-info/
-dist/
-build/
-.eggs/
-*.egg
-pip-log.txt
-pip-delete-this-directory.txt
-htmlcov/
 .tox/
 .coverage
-.coverage.*
-coverage.xml
-*.cover
+htmlcov/
 
-# === MÔITRƯỜNG ẢO (Virtual Environments) ===
+# Virtual Environments
 .venv/
 venv/
-env/
 ENV/
-.python-version
+env/
 
-# === IDE & EDITOR ===
-.vscode/settings.json
+# Environment Variables & Keys
+.env
+.env.local
+
+# Databases & Local Storage (Avoid committing heavy binary vectors)
+db/
+*.db
+*.sqlite
+
+# Large Documentations / RAG Docs (Do not commit 1GB+ of documentation)
+docs/
+
+# IDE & Editor Settings
+.vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 *.swp
-*.swo
-*~
+
+# OS Files
 .DS_Store
 Thumbs.db
-Desktop.ini
 
-# === LOGS ===
-*.log
-logs/
-
-# === NODE (nếu sau này có thêm) ===
-node_modules/
+# Project-specific Temporary Files
+scratch/
+session_checkpoint.md
