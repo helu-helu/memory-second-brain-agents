@@ -3,7 +3,7 @@ agent_core/knowledge.py
 Wrapper for LlamaIndex RAG using google-genai integration.
 Indexes documents from ./docs.
 Supports: .md, .html, .json, .txt
-Stores vector database locally in ./db/qdrant_rag
+Stores vector database locally in ./db/qdrant_rag, loads existing index if available.
 """
 
 import os
@@ -45,12 +45,7 @@ class KnowledgeBase:
 
     def load(self, limit: int = None, input_files: list[str] = None) -> bool:
         """
-        Indexes files in ./docs and loads them into Qdrant.
-        Call once on startup, or when new files are added.
-        
-        Args:
-            limit: (optional) Maximum number of files to index (useful to prevent token exhaustion during setup).
-            input_files: (optional) List of specific file paths to index (bypasses full directory scanning).
+        Loads the index from Qdrant local storage, or builds it from ./docs if not found.
         """
         try:
             from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
@@ -61,6 +56,24 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
+            client = QdrantClient(path=QDRANT_PATH)
+            vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
+
+            # Check if index already exists in Qdrant to avoid rebuilding (saves tokens and time)
+            try:
+                if client.collection_exists(COLLECTION_NAME):
+                    collection_info = client.get_collection(COLLECTION_NAME)
+                    if collection_info.points_count > 0 and not input_files:
+                        print(f"[KnowledgeBase] Found existing index with {collection_info.points_count} vectors. Loading...")
+                        self._index = VectorStoreIndex.from_vector_store(
+                            vector_store=vector_store
+                        )
+                        self._ready = True
+                        return True
+            except Exception as e:
+                print(f"[KnowledgeBase] Info checking collection: {e}")
+
+            # Rebuild index from files
             if input_files:
                 print(f"[KnowledgeBase] Indexing specific files: {input_files}")
                 reader = SimpleDirectoryReader(input_files=input_files)
@@ -89,10 +102,7 @@ class KnowledgeBase:
                     num_files_limit=limit
                 )
 
-            client = QdrantClient(path=QDRANT_PATH)
-            vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
             documents = reader.load_data()
             self._index = VectorStoreIndex.from_documents(
                 documents, storage_context=storage_context, show_progress=True
