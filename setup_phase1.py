@@ -98,15 +98,19 @@ def check_memory():
 
 def check_knowledge():
     step(5, 5, "Checking RAG LlamaIndex (indexing + search)")
+    temp_file = "./docs/setup_test_rag.txt"
     try:
+        # Create a tiny temp file to test indexing without 429 rate limit errors
+        with open(temp_file, "w", encoding="utf-8") as f:
+            f.write("Unity 6.3 new 2D physics system runs on local port 8000")
+            
         from agent_core.knowledge import KnowledgeBase
         kb = KnowledgeBase()
-        # Limit to 5 files to prevent rate-limit / token burn during verification
-        ok = kb.load(limit=5)
+        ok = kb.load(input_files=[temp_file])
         if not ok:
-            print("  [ERROR] Failed to index documents (docs/ empty or error)")
+            print("  [ERROR] Failed to index documents")
             return False
-        result = kb.search("database port config", top_k=1)
+        result = kb.search("2D physics local port", top_k=1)
         if "(Không tìm" in result or "(Lỗi" in result or "(chưa được" in result or "(No document" in result:
             print(f"  [WARN] RAG: {result[:100]}")
         else:
@@ -116,6 +120,13 @@ def check_knowledge():
     except Exception as e:
         print(f"  [ERROR] RAG Error: {e}")
         return False
+    finally:
+        # Clean up temp test file
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except Exception:
+                pass
 
 def report(results: dict):
     print("\n" + "=" * 55)

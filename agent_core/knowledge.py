@@ -43,13 +43,14 @@ class KnowledgeBase:
             model="gemini-2.5-flash", api_key=api_key
         )
 
-    def load(self, limit: int = None) -> bool:
+    def load(self, limit: int = None, input_files: list[str] = None) -> bool:
         """
         Indexes files in ./docs and loads them into Qdrant.
         Call once on startup, or when new files are added.
         
         Args:
             limit: (optional) Maximum number of files to index (useful to prevent token exhaustion during setup).
+            input_files: (optional) List of specific file paths to index (bypasses full directory scanning).
         """
         try:
             from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
@@ -60,33 +61,38 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
-            # Count valid document files
-            valid_exts = {".md", ".html", ".json", ".txt"}
-            doc_files = []
-            for root, _, files in os.walk(DOCS_DIR):
-                for f in files:
-                    if os.path.splitext(f)[1].lower() in valid_exts:
-                        doc_files.append(os.path.join(root, f))
-            if not doc_files:
-                print(f"[KnowledgeBase] [WARN] Directory {DOCS_DIR} has no valid files.")
-                self._ready = False
-                return False
-
-            # Apply limit if specified
-            if limit:
-                print(f"[KnowledgeBase] Indexing limited to first {limit} files (total files: {len(doc_files)})...")
+            if input_files:
+                print(f"[KnowledgeBase] Indexing specific files: {input_files}")
+                reader = SimpleDirectoryReader(input_files=input_files)
             else:
-                print(f"[KnowledgeBase] Indexing all {len(doc_files)} files...")
-                
+                # Count valid document files
+                valid_exts = {".md", ".html", ".json", ".txt"}
+                doc_files = []
+                for root, _, files in os.walk(DOCS_DIR):
+                    for f in files:
+                        if os.path.splitext(f)[1].lower() in valid_exts:
+                            doc_files.append(os.path.join(root, f))
+                if not doc_files:
+                    print(f"[KnowledgeBase] [WARN] Directory {DOCS_DIR} has no valid files.")
+                    self._ready = False
+                    return False
+
+                # Apply limit if specified
+                if limit:
+                    print(f"[KnowledgeBase] Indexing limited to first {limit} files (total files: {len(doc_files)})...")
+                else:
+                    print(f"[KnowledgeBase] Indexing all {len(doc_files)} files...")
+
+                reader = SimpleDirectoryReader(
+                    input_dir=DOCS_DIR, recursive=True,
+                    required_exts=list(valid_exts),
+                    num_files_limit=limit
+                )
+
             client = QdrantClient(path=QDRANT_PATH)
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-            reader = SimpleDirectoryReader(
-                input_dir=DOCS_DIR, recursive=True,
-                required_exts=list(valid_exts),
-                num_files_limit=limit
-            )
             documents = reader.load_data()
             self._index = VectorStoreIndex.from_documents(
                 documents, storage_context=storage_context, show_progress=True
@@ -98,11 +104,11 @@ class KnowledgeBase:
             print(f"[KnowledgeBase.load] Error: {e}")
             return False
 
-    def reload(self, limit: int = None) -> bool:
+    def reload(self, limit: int = None, input_files: list[str] = None) -> bool:
         """Reload index when docs are updated."""
         self._index = None
         self._ready = False
-        return self.load(limit=limit)
+        return self.load(limit=limit, input_files=input_files)
 
     def search(self, query: str, top_k: int = 3) -> str:
         """

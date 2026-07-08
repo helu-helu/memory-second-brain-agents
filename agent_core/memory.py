@@ -31,6 +31,7 @@ MEM0_CONFIG = {
         "config": {
             "collection_name": "personal_agent_memory",
             "path": "./db/qdrant_mem0",
+            "embedding_model_dims": 768  # Crucial: Match gemini-embedding-2 dimension
         }
     },
     "history_db_path": "./db/mem0_history.db",
