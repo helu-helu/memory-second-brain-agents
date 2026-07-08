@@ -6,27 +6,33 @@ Hệ thống bộ nhớ động dài hạn (Mem0) kết hợp kho tri thức tĩ
 
 ## 🛠️ Kiến Trúc Dự Án (Project Architecture)
 
-Dự án được thiết kế theo mô hình **Second Brain (Bộ não thứ hai)** để tối ưu hóa token và bối cảnh hoạt động cho AI Agent:
+Dự án được thiết kế theo mô hình **Second Brain (Bộ não thứ hai)** với kiến trúc trung tâm (Centralized) nhằm hỗ trợ đa Agent cùng lúc:
 
 ```
-                      ┌────────────────────────┐
-                      │    AI Coding Agent     │
-                      │ (Cline, Antigravity...)│
-                      └────────────────────────┘
-                                  │
-          ┌───────────────────────┴───────────────────────┐
-          ▼                                               ▼
-┌──────────────────┐                            ┌──────────────────┐
-│  Bộ nhớ động     │                            │  Tri thức tĩnh   │
-│  (MemoryManager) │                            │ (KnowledgeBase)  │
-└──────────────────┘                            └──────────────────┘
-   Mem0 + Qdrant local                             LlamaIndex RAG
-   SQLite History                                  docs/ (Unity 6.3)
-   Dimension: 768                                  Dimension: 768
+                      [ Antigravity / Cline ]      [ Hermes / Personal Agents ]
+                               │                                │
+                       (Giao thức MCP stdio)            (Giao thức HTTP REST)
+                               │                                │
+                               ▼                                ▼
+                      ┌───────────────────────────────────────────────┐
+                      │            API Bridge & MCP Server            │
+                      │       (mcp_server.py & api_server.py)         │
+                      └───────────────────────────────────────────────┘
+                                              │
+                         ┌────────────────────┴────────────────────┐
+                         ▼                                         ▼
+               ┌──────────────────┐                      ┌──────────────────┐
+               │  Bộ nhớ động     │                      │  Tri thức tĩnh   │
+               │  (MemoryManager) │                      │ (KnowledgeBase)  │
+               └──────────────────┘                      └──────────────────┘
+                         │                                         │
+                         └────────────────────┬────────────────────┘
+                                              ▼
+                              ┌──────────────────────────────────┐
+                              │     Qdrant Server (Docker)       │
+                              │     localhost:6333 / 6334        │
+                              └──────────────────────────────────┘
 ```
-
-*   **Bộ nhớ động (Dynamic Memory - Mem0):** Tự động ghi nhớ sở thích, thói quen và quyết định thiết kế của lập trình viên qua các phiên làm việc.
-*   **Tri thức tĩnh (Static Knowledge - RAG):** Kho tài liệu tra cứu kỹ thuật cục bộ (mặc định cấu hình cho tài liệu Unity 6.3).
 
 ---
 
@@ -34,32 +40,28 @@ Dự án được thiết kế theo mô hình **Second Brain (Bộ não thứ ha
 
 ```
 Memory and Second Brain for Agents/
-├── .agents/
-│   ├── AGENTS.md               ← Quy tắc chung & Hướng dẫn cho AI Agent
-│   └── skills/
-│       └── session_checkpoint/ ← Skill tự động chốt phiên của Agent
-│           ├── SKILL.md
-│           └── scripts/
-│               └── auto_checkpoint.py  ← Script AI tự động phân tích Git Diff
-├── agent_core/
-│   ├── __init__.py             ← Package interface chính
-│   ├── memory.py               ← Wrapper Mem0 (Gemini 2.5 Flash + Qdrant local 768d)
-│   ├── knowledge.py            ← Wrapper LlamaIndex RAG (Gemini Embedding 2)
-│   └── context_builder.py      ← Bộ xây dựng System Prompt tích hợp
-├── docs/                       ← Thư mục chứa tài liệu RAG (.md, .html, .json, .txt)
-├── db/                         ← Thư mục lưu trữ database cục bộ (Qdrant & SQLite)
-├── scratch/                    ← Thư mục lưu trữ file checkpoint tạm thời
-├── requirements.txt            ← Các thư viện Python cần thiết
-├── .env.example                ← Mẫu cấu hình biến môi trường
-├── setup_phase1.py             ← Script kiểm tra và xác minh hệ thống
-└── session_reset.py            ← Công cụ CLI chốt phiên chat thủ công
+├── .agents/                    ← Cấu hình và kỹ năng của Agent
+├── agent_core/                 ← Code xử lý trung tâm (memory.py, knowledge.py kết nối Docker)
+├── db/                         ← Thư mục lưu DB (Volume của Docker)
+├── docs/                       ← Thư mục tài liệu RAG
+├── docker-compose.yml          ← [NEW] Script chạy Qdrant Server qua Docker
+├── api_server.py               ← [NEW] Máy chủ FastAPI trung tâm cho các Agent nhẹ
+├── mcp_server.py               ← Máy chủ MCP cho các AI IDE (Cline, Roo Code)
+├── setup_phase1.py             ← Script kiểm tra và nghiệm thu
+└── session_reset.py            ← Công cụ chốt phiên chat
 ```
 
 ---
 
 ## 🚀 Hướng Dẫn Cài Đặt (Installation)
 
-### 1. Cấu hình biến môi trường
+### 1. Khởi chạy Qdrant Server (Docker)
+Bắt buộc phải cài đặt Docker Desktop và chạy lệnh sau để khởi động cơ sở dữ liệu Vector:
+```bash
+docker-compose up -d
+```
+
+### 2. Cấu hình biến môi trường
 Sao chép `.env.example` thành `.env`:
 ```bash
 copy .env.example .env

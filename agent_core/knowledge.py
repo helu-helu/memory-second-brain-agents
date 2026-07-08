@@ -56,7 +56,7 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
-            client = QdrantClient(path=QDRANT_PATH)
+            client = QdrantClient(host="localhost", port=6333)
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
 
             # Check if index already exists in Qdrant to avoid rebuilding (saves tokens and time)

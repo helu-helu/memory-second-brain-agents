@@ -31,7 +31,8 @@ MEM0_CONFIG = {
         "provider": "qdrant",
         "config": {
             "collection_name": "personal_agent_memory",
-            "path": "./db/qdrant_mem0",
+            "host": "localhost",
+            "port": 6333,
             "embedding_model_dims": 768  # Match gemini-embedding-2 dimension
         }
     },
