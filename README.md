@@ -136,3 +136,29 @@ Mở cửa sổ chat mới tinh, copy và gửi câu lệnh mở đầu được
 ```text
 Hãy đọc file `./scratch/session_checkpoint_db_setup.md` để nắm bắt bối cảnh hiện tại của session 'db_setup' và tiếp tục công việc.
 ```
+
+---
+
+## 🔌 Cấu Hình Vào VS Code (Cline / Roo Code)
+
+Dự án này cung cấp một máy chủ local MCP (`mcp_server.py`) chạy qua giao thức stdio. Khi cấu hình vào VS Code, các Coding Agent (như Cline hoặc Roo Code) sẽ tự động kích hoạt các công cụ tra cứu tri thức và bộ nhớ của bạn ngầm (under the hood) khi chat.
+
+Để cấu hình, bạn mở file cấu hình MCP của Cline trong VS Code (`clinedesktop_config.json` hoặc `mcpConfig.json` của Roo Code) và thêm server sau:
+
+```json
+{
+  "mcpServers": {
+    "memory-second-brain-bridge": {
+      "command": "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+      "args": ["D:\\Workspace\\Another\\Agent\\Memory\\Memory and Second Brain for Agents\\mcp_server.py"],
+      "env": {
+        "GEMINI_API_KEY": "your_actual_api_key_here",
+        "GOOGLE_API_KEY": "your_actual_api_key_here"
+      },
+      "disabled": false
+    }
+  }
+}
+```
+*Lưu ý:* Hãy nhớ đổi `your_actual_api_key_here` thành khóa Gemini API thực tế của bạn.
+
