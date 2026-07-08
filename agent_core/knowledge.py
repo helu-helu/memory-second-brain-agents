@@ -1,8 +1,8 @@
 """
 agent_core/knowledge.py
-Wrapper cho LlamaIndex RAG — lập chỉ mục tài liệu từ ./docs.
-Hỗ trợ: .md, .html, .json, .txt
-Lưu trữ vector cục bộ trong ./db/qdrant_rag
+Wrapper for LlamaIndex RAG - indexes documents from ./docs.
+Supports: .md, .html, .json, .txt
+Stores vector database locally in ./db/qdrant_rag
 """
 
 import os
@@ -17,12 +17,12 @@ COLLECTION_NAME = "personal_knowledge_base"
 
 class KnowledgeBase:
     """
-    Quản lý tri thức tĩnh từ các file tài liệu trong ./docs.
+    Manages static knowledge retrieval from ./docs.
     
-    Cách dùng:
+    Usage:
         kb = KnowledgeBase()
         kb.load()
-        result = kb.search("cấu hình database")
+        result = kb.search("database setup")
     """
 
     def __init__(self):
@@ -30,7 +30,7 @@ class KnowledgeBase:
         self._ready = False
 
     def _setup_settings(self):
-        """Cấu hình Gemini làm LLM + Embedder cho LlamaIndex."""
+        """Configure Gemini as the LLM and Embedder for LlamaIndex."""
         from llama_index.core import Settings
         from llama_index.embeddings.gemini import GeminiEmbedding
         from llama_index.llms.gemini import Gemini
@@ -44,8 +44,8 @@ class KnowledgeBase:
 
     def load(self) -> bool:
         """
-        Lập chỉ mục toàn bộ file trong ./docs và nạp vào bộ nhớ.
-        Gọi hàm này 1 lần khi khởi động, hoặc sau khi thêm file mới.
+        Indexes all files in ./docs and loads them into Qdrant.
+        Call once on startup, or when new files are added.
         """
         try:
             from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
@@ -56,19 +56,19 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
-            # Đếm file hợp lệ
+            # Count valid document files
             valid_exts = {".md", ".html", ".json", ".txt"}
             doc_files = [
                 f for root, _, files in os.walk(DOCS_DIR)
                 for f in files if os.path.splitext(f)[1].lower() in valid_exts
             ]
             if not doc_files:
-                print(f"[KnowledgeBase] ⚠️  Thư mục {DOCS_DIR} trống. "
-                      "Hãy thêm file .md/.html/.json/.txt vào đó.")
+                print(f"[KnowledgeBase] [WARN] Directory {DOCS_DIR} is empty. "
+                      "Please add documentation files first.")
                 self._ready = False
                 return False
 
-            print(f"[KnowledgeBase] Đang lập chỉ mục {len(doc_files)} file...")
+            print(f"[KnowledgeBase] Indexing {len(doc_files)} files...")
             client = QdrantClient(path=QDRANT_PATH)
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
@@ -82,41 +82,41 @@ class KnowledgeBase:
                 documents, storage_context=storage_context, show_progress=True
             )
             self._ready = True
-            print(f"[KnowledgeBase] ✅ Đã lập chỉ mục {len(documents)} đoạn văn bản.")
+            print(f"[KnowledgeBase] [SUCCESS] Indexed {len(documents)} document chunks.")
             return True
         except Exception as e:
-            print(f"[KnowledgeBase.load] Lỗi: {e}")
+            print(f"[KnowledgeBase.load] Error: {e}")
             return False
 
     def reload(self) -> bool:
-        """Nạp lại chỉ mục sau khi thêm file mới vào ./docs."""
+        """Reload index when docs are updated."""
         self._index = None
         self._ready = False
         return self.load()
 
     def search(self, query: str, top_k: int = 3) -> str:
         """
-        Tìm kiếm và trả về các đoạn tài liệu gốc liên quan nhất.
-        Không tóm tắt qua LLM — trả về nội dung nguyên bản để tiết kiệm token.
+        Search and retrieve raw text snippets.
+        No LLM synthesis is done here to save context tokens.
         """
         if not self._ready or self._index is None:
-            return "(KnowledgeBase chưa được load. Hãy gọi kb.load() trước)"
+            return "(KnowledgeBase not loaded. Please call kb.load() first)"
         try:
             retriever = self._index.as_retriever(similarity_top_k=top_k)
             nodes = retriever.retrieve(query)
             if not nodes:
-                return "(Không tìm thấy thông tin liên quan trong tài liệu)"
+                return "(No matching documentation found)"
             parts = []
             for node in nodes:
                 source = node.metadata.get("file_name", "unknown")
-                content = node.get_content()[:1000]  # Giới hạn 1000 ký tự/đoạn
-                parts.append(f"[Nguồn: {source}]\n{content}")
+                content = node.get_content()[:1000]
+                parts.append(f"[Source: {source}]\n{content}")
             return "\n\n---\n\n".join(parts)
         except Exception as e:
-            return f"(Lỗi khi tìm kiếm RAG: {e})"
+            return f"(RAG Search Error: {e})"
 
     def list_docs(self) -> list[str]:
-        """Liệt kê các file tài liệu đang được theo dõi trong ./docs."""
+        """List files currently in the docs/ directory."""
         valid_exts = {".md", ".html", ".json", ".txt"}
         files = []
         if os.path.exists(DOCS_DIR):

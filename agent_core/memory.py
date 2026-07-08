@@ -1,7 +1,7 @@
 """
 agent_core/memory.py
-Wrapper cho Mem0 — sử dụng Gemini Flash làm LLM trích xuất ký ức.
-Lưu trữ 100% cục bộ: Vector DB (Qdrant local) + SQLite history.
+Wrapper for Mem0 using Gemini Flash as the LLM extractor.
+Stores 100% locally: Vector DB (Qdrant local) + SQLite history.
 """
 
 import os
@@ -40,11 +40,11 @@ MEM0_CONFIG = {
 
 class MemoryManager:
     """
-    Quản lý bộ nhớ dài hạn (Mem0).
+    Manages long-term personal agent memory.
     
-    Cách dùng:
+    Usage:
         mem = MemoryManager()
-        mem.add("Tôi thích Python async/await")
+        mem.add("I prefer Python async coding")
         facts = mem.search("coding style")
     """
 
@@ -63,8 +63,7 @@ class MemoryManager:
     def add(self, text: str, agent_id: Optional[str] = None,
             metadata: Optional[dict] = None) -> bool:
         """
-        Ghi nhớ thông tin mới. Mem0 tự trích xuất facts qua LLM.
-        Truyền text thuần hoặc list hội thoại [{"role":..., "content":...}].
+        Record new facts/dialogue history. Mem0 automatically extracts facts.
         """
         try:
             self._get_client().add(
@@ -75,44 +74,44 @@ class MemoryManager:
             )
             return True
         except Exception as e:
-            print(f"[MemoryManager.add] Lỗi: {e}")
+            print(f"[MemoryManager.add] Error: {e}")
             return False
 
     def search(self, query: str, limit: int = 5,
                agent_id: Optional[str] = None) -> list[dict]:
-        """Tìm kiếm các ký ức liên quan đến câu hỏi (semantic search)."""
+        """Search related memories using semantic retrieval."""
         try:
             results = self._get_client().search(
                 query, user_id=self.user_id, agent_id=agent_id, limit=limit
             )
             return results if isinstance(results, list) else results.get("results", [])
         except Exception as e:
-            print(f"[MemoryManager.search] Lỗi: {e}")
+            print(f"[MemoryManager.search] Error: {e}")
             return []
 
     def get_all(self, agent_id: Optional[str] = None) -> list[dict]:
-        """Lấy toàn bộ ký ức đang lưu của user."""
+        """Retrieve all stored memories for the user."""
         try:
             results = self._get_client().get_all(
                 user_id=self.user_id, agent_id=agent_id
             )
             return results if isinstance(results, list) else results.get("results", [])
         except Exception as e:
-            print(f"[MemoryManager.get_all] Lỗi: {e}")
+            print(f"[MemoryManager.get_all] Error: {e}")
             return []
 
     def delete_all(self) -> bool:
-        """Xóa sạch toàn bộ ký ức của user."""
+        """Clear all stored memories for the user."""
         try:
             self._get_client().delete_all(user_id=self.user_id)
             return True
         except Exception as e:
-            print(f"[MemoryManager.delete_all] Lỗi: {e}")
+            print(f"[MemoryManager.delete_all] Error: {e}")
             return False
 
     def format_for_prompt(self, memories: list[dict]) -> str:
-        """Định dạng danh sách ký ức thành text để chèn vào System Prompt."""
+        """Format list of memories into a bulleted string for the System Prompt."""
         if not memories:
-            return "(Chưa có ký ức nào liên quan)"
+            return "(No relevant memories found)"
         lines = [f"- {m.get('memory') or m.get('fact') or str(m)}" for m in memories]
         return "\n".join(lines)

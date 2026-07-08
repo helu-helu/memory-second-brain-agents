@@ -1,32 +1,30 @@
 """
 setup_phase1.py
-Script kiểm tra và xác nhận toàn bộ hệ thống Phase 1 hoạt động.
-Chạy: python setup_phase1.py
+Script to check and verify the Phase 1 setup.
+Run: python setup_phase1.py
 """
 
-import os, sys
-
+import os
+import sys
 
 def step(n, total, label):
     print(f"\n[{n}/{total}] {label}...")
 
-
 def check_env():
-    step(1, 5, "Kiểm tra GEMINI_API_KEY")
+    step(1, 5, "Checking GEMINI_API_KEY")
     from dotenv import load_dotenv
     load_dotenv()
     key = os.getenv("GEMINI_API_KEY", "")
     if not key or "your_gemini" in key:
-        print("  ❌ Chưa cấu hình GEMINI_API_KEY")
-        print("  → Sao chép .env.example thành .env rồi điền key vào")
-        print("  → Lấy key miễn phí: https://aistudio.google.com/app/apikey")
+        print("  [ERROR] GEMINI_API_KEY not configured in .env")
+        print("  -> Copy .env.example to .env and fill in your API key")
+        print("  -> Get free key: https://aistudio.google.com/app/apikey")
         return False
-    print(f"  ✅ Key đã cấu hình ({key[:8]}...)")
+    print(f"  [SUCCESS] Key configured successfully ({key[:8]}...)")
     return True
 
-
 def check_libs():
-    step(2, 5, "Kiểm tra thư viện Python")
+    step(2, 5, "Checking Python libraries")
     libs = {
         "mem0ai": "mem0",
         "llama_index": "llama_index.core",
@@ -36,111 +34,106 @@ def check_libs():
     import importlib
     missing = [pkg for pkg, mod in libs.items() if importlib.util.find_spec(mod) is None]
     if missing:
-        print(f"  ❌ Chưa cài: {', '.join(missing)}")
-        print("  → Chạy: pip install -r requirements.txt")
+        print(f"  [ERROR] Missing packages: {', '.join(missing)}")
+        print("  -> Run: pip install -r requirements.txt")
         return False
-    print("  ✅ Tất cả thư viện đã sẵn sàng")
+    print("  [SUCCESS] All libraries are installed.")
     return True
 
-
 def check_dirs():
-    step(3, 5, "Kiểm tra cấu trúc thư mục")
+    step(3, 5, "Checking directory structure")
     for d in ["./docs", "./db", "./scratch", "./agent_core"]:
         os.makedirs(d, exist_ok=True)
-    print("  ✅ Các thư mục: docs/, db/, scratch/, agent_core/")
+    print("  [SUCCESS] Folders ready: docs/, db/, scratch/, agent_core/")
 
-    # Tạo file mẫu nếu docs/ trống
-    docs = [f for f in os.listdir("./docs")
-            if f.endswith((".md", ".html", ".json", ".txt"))]
+    # Check doc files
+    docs = []
+    valid_exts = {".md", ".html", ".json", ".txt"}
+    for root, _, files in os.walk("./docs"):
+        for f in files:
+            if os.path.splitext(f)[1].lower() in valid_exts:
+                docs.append(f)
     if not docs:
         sample = "./docs/00_coding_preferences.md"
         with open(sample, "w", encoding="utf-8") as f:
-            f.write("""# Quy Chuẩn & Sở Thích Lập Trình
+            f.write("""# Coding Preferences
 
-## Ngôn ngữ & phong cách
-- Ngôn ngữ chính: Python 3.11+
-- Luôn viết async/await cho các tác vụ I/O
-- Xử lý ngoại lệ bằng try/except, không để raise thô
+## Language & Style
+- Main language: Python 3.11+
+- Always write async/await for I/O tasks
+- Handle exceptions using try/except
 
-## Database & Cấu hình
+## Database & Config
 - Vector DB: Qdrant (local path ./db/qdrant_mem0)
 - History DB: SQLite (./db/mem0_history.db)
-- Cổng mặc định khi chạy local: 8000
-
-## Cấu trúc thư mục dự án
-- Tài liệu: ./docs/
-- Database cục bộ: ./db/
-- File tạm: ./scratch/
+- Default local port: 8000
 """)
-        print(f"  📄 Đã tạo file mẫu: {sample}")
+        print(f"  [FILE] Created sample doc: {sample}")
     else:
-        print(f"  📄 docs/ có sẵn {len(docs)} file: {docs[:3]}")
+        print(f"  [FILE] docs/ has {len(docs)} files. Example: {docs[:3]}")
     return True
 
-
 def check_memory():
-    step(4, 5, "Kiểm tra Mem0 (ghi + tìm kiếm)")
+    step(4, 5, "Checking Mem0 (write + search)")
     try:
         from agent_core.memory import MemoryManager
         mem = MemoryManager(user_id="setup_test")
-        test = "Người dùng thích viết code Python async và chạy database trên cổng 8000"
+        test = "User prefers Python async coding and runs DB on port 8000"
         ok = mem.add(test)
         if not ok:
-            print("  ❌ Không ghi được vào Mem0")
+            print("  [ERROR] Failed to write to Mem0")
             return False
         results = mem.search("coding style database port", limit=3)
         if results:
-            print(f"  ✅ Mem0 OK — tìm thấy {len(results)} ký ức:")
+            print(f"  [SUCCESS] Mem0 OK - Found {len(results)} memories:")
             for r in results[:2]:
                 fact = r.get("memory") or r.get("fact") or str(r)
-                print(f"     · {fact[:80]}")
+                print(f"     . {fact[:80]}")
         else:
-            print("  ⚠️  Mem0 ghi được nhưng chưa có kết quả search (thử lại)")
+            print("  [WARN] Mem0 wrote successfully but search returned no results yet.")
         return True
     except Exception as e:
-        print(f"  ❌ Lỗi Mem0: {e}")
+        print(f"  [ERROR] Mem0 Error: {e}")
         return False
 
-
 def check_knowledge():
-    step(5, 5, "Kiểm tra RAG LlamaIndex (lập chỉ mục + tìm kiếm)")
+    step(5, 5, "Checking RAG LlamaIndex (indexing + search)")
     try:
         from agent_core.knowledge import KnowledgeBase
         kb = KnowledgeBase()
         ok = kb.load()
         if not ok:
-            print("  ❌ Không lập chỉ mục được (docs/ trống hoặc lỗi)")
+            print("  [ERROR] Failed to index documents (docs/ empty or error)")
             return False
-        result = kb.search("database port cấu hình", top_k=1)
-        if "(Không tìm" in result or "(Lỗi" in result or "(chưa được" in result:
-            print(f"  ⚠️  RAG: {result[:100]}")
+        result = kb.search("database port config", top_k=1)
+        if "(Không tìm" in result or "(Lỗi" in result or "(chưa được" in result or "(No document" in result:
+            print(f"  [WARN] RAG: {result[:100]}")
         else:
-            print("  ✅ RAG OK — kết quả tìm kiếm mẫu:")
+            print("  [SUCCESS] RAG OK - Example search result:")
             print(f"     {result[:150]}...")
         return True
     except Exception as e:
-        print(f"  ❌ Lỗi RAG: {e}")
+        print(f"  [ERROR] RAG Error: {e}")
         return False
-
 
 def report(results: dict):
     print("\n" + "=" * 55)
-    print("  BÁO CÁO KIỂM TRA HỆ THỐNG PHASE 1")
+    print("  PHASE 1 SYSTEM VERIFICATION REPORT")
     print("=" * 55)
     for name, passed in results.items():
-        print(f"  {'✅' if passed else '❌'} {name}")
+        status = "[OK]" if passed else "[FAIL]"
+        print(f"  {status} {name}")
     print("=" * 55)
     if all(results.values()):
-        print("  🎉 Hệ thống sẵn sàng!\n")
-        print("  Bước tiếp theo:")
-        print("  1. Chép tài liệu .md/.html/.json vào ./docs/")
-        print("  2. Dùng agent_core trong code của bạn:")
+        print("  🎉 System is ready!\n")
+        print("  Next steps:")
+        print("  1. Add your documentation files to ./docs/")
+        print("  2. Import agent_core in your scripts:")
         print("     from agent_core import MemoryManager, KnowledgeBase, ContextBuilder")
-        print("  3. Chạy session_reset.py khi muốn chốt phiên để tiết kiệm token")
+        print("  3. Run session_reset.py to checkpoint and save tokens")
     else:
-        print("  ⚠️  Xem chi tiết lỗi ở trên để khắc phục.")
+        print("  [WARN] Please check the errors above to fix setup issues.")
     print("=" * 55)
-
 
 if __name__ == "__main__":
     print("=" * 55)
@@ -149,17 +142,19 @@ if __name__ == "__main__":
 
     results = {}
     if not check_env():
-        results["Cấu hình .env (GEMINI_API_KEY)"] = False
-        report(results); sys.exit(1)
-    results["Cấu hình .env (GEMINI_API_KEY)"] = True
+        results["Env config (.env)"] = False
+        report(results)
+        sys.exit(1)
+    results["Env config (.env)"] = True
 
     if not check_libs():
-        results["Thư viện Python (requirements.txt)"] = False
-        report(results); sys.exit(1)
-    results["Thư viện Python (requirements.txt)"] = True
+        results["Python Libraries (requirements.txt)"] = False
+        report(results)
+        sys.exit(1)
+    results["Python Libraries (requirements.txt)"] = True
 
-    results["Cấu trúc thư mục & tài liệu mẫu"] = check_dirs()
-    results["Mem0 (Bộ nhớ động)"] = check_memory()
-    results["RAG LlamaIndex (Tri thức tĩnh)"] = check_knowledge()
+    results["Directory structure & sample docs"] = check_dirs()
+    results["Mem0 (Dynamic Memory)"] = check_memory()
+    results["RAG LlamaIndex (Static Knowledge)"] = check_knowledge()
 
     report(results)
