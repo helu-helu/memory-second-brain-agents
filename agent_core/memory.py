@@ -2,6 +2,7 @@
 agent_core/memory.py
 Wrapper for Mem0 using Gemini Flash as the LLM extractor.
 Stores 100% locally: Vector DB (Qdrant local) + SQLite history.
+Supports Mem0 v2.0+ filter syntax.
 """
 
 import os
@@ -31,7 +32,7 @@ MEM0_CONFIG = {
         "config": {
             "collection_name": "personal_agent_memory",
             "path": "./db/qdrant_mem0",
-            "embedding_model_dims": 768  # Crucial: Match gemini-embedding-2 dimension
+            "embedding_model_dims": 768  # Match gemini-embedding-2 dimension
         }
     },
     "history_db_path": "./db/mem0_history.db",
@@ -80,10 +81,14 @@ class MemoryManager:
 
     def search(self, query: str, limit: int = 5,
                agent_id: Optional[str] = None) -> list[dict]:
-        """Search related memories using semantic retrieval."""
+        """Search related memories using semantic retrieval with Mem0 v2.0+ filters."""
         try:
+            filters = {"user_id": self.user_id}
+            if agent_id:
+                filters["agent_id"] = agent_id
+                
             results = self._get_client().search(
-                query, user_id=self.user_id, agent_id=agent_id, limit=limit
+                query, limit=limit, filters=filters
             )
             return results if isinstance(results, list) else results.get("results", [])
         except Exception as e:
@@ -91,10 +96,14 @@ class MemoryManager:
             return []
 
     def get_all(self, agent_id: Optional[str] = None) -> list[dict]:
-        """Retrieve all stored memories for the user."""
+        """Retrieve all stored memories for the user with Mem0 v2.0+ filters."""
         try:
+            filters = {"user_id": self.user_id}
+            if agent_id:
+                filters["agent_id"] = agent_id
+                
             results = self._get_client().get_all(
-                user_id=self.user_id, agent_id=agent_id
+                filters=filters
             )
             return results if isinstance(results, list) else results.get("results", [])
         except Exception as e:

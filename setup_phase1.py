@@ -90,7 +90,8 @@ def check_memory():
                 fact = r.get("memory") or r.get("fact") or str(r)
                 print(f"     . {fact[:80]}")
         else:
-            print("  [WARN] Mem0 wrote successfully but search returned no results yet.")
+            print("  [ERROR] Mem0 search returned no results.")
+            return False
         return True
     except Exception as e:
         print(f"  [ERROR] Mem0 Error: {e}")
@@ -137,7 +138,7 @@ def report(results: dict):
         print(f"  {status} {name}")
     print("=" * 55)
     if all(results.values()):
-        print("  🎉 System is ready!\n")
+        print("  [SUCCESS] System is ready!\n")
         print("  Next steps:")
         print("  1. Add your documentation files to ./docs/")
         print("  2. Import agent_core in your scripts:")
