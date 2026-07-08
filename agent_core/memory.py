@@ -14,7 +14,7 @@ MEM0_CONFIG = {
     "llm": {
         "provider": "gemini",
         "config": {
-            "model": "gemini-1.5-flash",
+            "model": "gemini-2.5-flash",
             "api_key": os.getenv("GEMINI_API_KEY"),
             "temperature": 0,
         }
@@ -22,7 +22,7 @@ MEM0_CONFIG = {
     "embedder": {
         "provider": "gemini",
         "config": {
-            "model": "models/text-embedding-004",
+            "model": "gemini-embedding-2",
             "api_key": os.getenv("GEMINI_API_KEY"),
         }
     },

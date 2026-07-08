@@ -101,7 +101,8 @@ def check_knowledge():
     try:
         from agent_core.knowledge import KnowledgeBase
         kb = KnowledgeBase()
-        ok = kb.load()
+        # Limit to 5 files to prevent rate-limit / token burn during verification
+        ok = kb.load(limit=5)
         if not ok:
             print("  [ERROR] Failed to index documents (docs/ empty or error)")
             return False

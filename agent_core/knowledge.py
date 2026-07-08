@@ -1,6 +1,7 @@
 """
 agent_core/knowledge.py
-Wrapper for LlamaIndex RAG - indexes documents from ./docs.
+Wrapper for LlamaIndex RAG using google-genai integration.
+Indexes documents from ./docs.
 Supports: .md, .html, .json, .txt
 Stores vector database locally in ./db/qdrant_rag
 """
@@ -30,22 +31,25 @@ class KnowledgeBase:
         self._ready = False
 
     def _setup_settings(self):
-        """Configure Gemini as the LLM and Embedder for LlamaIndex."""
+        """Configure Gemini via google-genai integration."""
         from llama_index.core import Settings
-        from llama_index.embeddings.gemini import GeminiEmbedding
-        from llama_index.llms.gemini import Gemini
+        from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
+        from llama_index.llms.google_genai import GoogleGenAI
         api_key = os.getenv("GEMINI_API_KEY")
-        Settings.embed_model = GeminiEmbedding(
-            model_name="models/text-embedding-004", api_key=api_key
+        Settings.embed_model = GoogleGenAIEmbedding(
+            model_name="models/gemini-embedding-2", api_key=api_key
         )
-        Settings.llm = Gemini(
-            model="models/gemini-1.5-flash", api_key=api_key
+        Settings.llm = GoogleGenAI(
+            model="gemini-2.5-flash", api_key=api_key
         )
 
-    def load(self) -> bool:
+    def load(self, limit: int = None) -> bool:
         """
-        Indexes all files in ./docs and loads them into Qdrant.
+        Indexes files in ./docs and loads them into Qdrant.
         Call once on startup, or when new files are added.
+        
+        Args:
+            limit: (optional) Maximum number of files to index (useful to prevent token exhaustion during setup).
         """
         try:
             from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
@@ -58,24 +62,30 @@ class KnowledgeBase:
 
             # Count valid document files
             valid_exts = {".md", ".html", ".json", ".txt"}
-            doc_files = [
-                f for root, _, files in os.walk(DOCS_DIR)
-                for f in files if os.path.splitext(f)[1].lower() in valid_exts
-            ]
+            doc_files = []
+            for root, _, files in os.walk(DOCS_DIR):
+                for f in files:
+                    if os.path.splitext(f)[1].lower() in valid_exts:
+                        doc_files.append(os.path.join(root, f))
             if not doc_files:
-                print(f"[KnowledgeBase] [WARN] Directory {DOCS_DIR} is empty. "
-                      "Please add documentation files first.")
+                print(f"[KnowledgeBase] [WARN] Directory {DOCS_DIR} has no valid files.")
                 self._ready = False
                 return False
 
-            print(f"[KnowledgeBase] Indexing {len(doc_files)} files...")
+            # Apply limit if specified
+            if limit:
+                print(f"[KnowledgeBase] Indexing limited to first {limit} files (total files: {len(doc_files)})...")
+            else:
+                print(f"[KnowledgeBase] Indexing all {len(doc_files)} files...")
+                
             client = QdrantClient(path=QDRANT_PATH)
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
             reader = SimpleDirectoryReader(
                 input_dir=DOCS_DIR, recursive=True,
-                required_exts=list(valid_exts)
+                required_exts=list(valid_exts),
+                num_files_limit=limit
             )
             documents = reader.load_data()
             self._index = VectorStoreIndex.from_documents(
@@ -88,11 +98,11 @@ class KnowledgeBase:
             print(f"[KnowledgeBase.load] Error: {e}")
             return False
 
-    def reload(self) -> bool:
+    def reload(self, limit: int = None) -> bool:
         """Reload index when docs are updated."""
         self._index = None
         self._ready = False
-        return self.load()
+        return self.load(limit=limit)
 
     def search(self, query: str, top_k: int = 3) -> str:
         """
