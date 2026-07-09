@@ -75,14 +75,14 @@ class DocsChangeHandler(FileSystemEventHandler):
 
 def start_watchdog():
     """Starts the directory observer in a background thread"""
-    docs_dir = os.path.join(project_root, "docs")
+    docs_dir = os.path.join(project_root, "docs", "daily")
     os.makedirs(docs_dir, exist_ok=True)
     
     event_handler = DocsChangeHandler()
     observer = Observer()
     observer.schedule(event_handler, path=docs_dir, recursive=True)
     observer.start()
-    print("[Watchdog] Started monitoring ./docs for Auto-Sync.")
+    print(f"[Watchdog] Started monitoring {docs_dir} for Auto-Sync.")
     try:
         while True:
             time.sleep(1)

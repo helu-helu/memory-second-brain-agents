@@ -31,14 +31,16 @@ class KnowledgeBase:
         self._ready = False
 
     def _setup_settings(self):
-        """Configure Gemini via google-genai integration."""
+        """Configure LLM and Embedding models."""
         from llama_index.core import Settings
-        from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
+        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
         from llama_index.llms.google_genai import GoogleGenAI
         api_key = os.getenv("GEMINI_API_KEY")
-        Settings.embed_model = GoogleGenAIEmbedding(
-            model_name="models/gemini-embedding-2", api_key=api_key
-        )
+        
+        # 1. Use HuggingFace for offline, unlimited local embeddings (CPU optimized for Ryzen 7)
+        Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        
+        # 2. Use Gemini for LLM synthesis (if needed)
         Settings.llm = GoogleGenAI(
             model="gemini-2.5-flash", api_key=api_key
         )
