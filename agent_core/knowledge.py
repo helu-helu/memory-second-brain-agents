@@ -43,7 +43,7 @@ class KnowledgeBase:
             model="gemini-2.5-flash", api_key=api_key
         )
 
-    def load(self, limit: int = None, input_files: list[str] = None) -> bool:
+    def load(self, limit: int = None, input_files: list[str] = None, force_rebuild: bool = False) -> bool:
         """
         Loads the index from Qdrant local storage, or builds it from ./docs if not found.
         """
@@ -61,7 +61,7 @@ class KnowledgeBase:
 
             # Check if index already exists in Qdrant to avoid rebuilding (saves tokens and time)
             try:
-                if client.collection_exists(COLLECTION_NAME):
+                if not force_rebuild and client.collection_exists(COLLECTION_NAME):
                     collection_info = client.get_collection(COLLECTION_NAME)
                     if collection_info.points_count > 0 and not input_files:
                         print(f"[KnowledgeBase] Found existing index with {collection_info.points_count} vectors. Loading...")
@@ -118,7 +118,7 @@ class KnowledgeBase:
         """Reload index when docs are updated."""
         self._index = None
         self._ready = False
-        return self.load(limit=limit, input_files=input_files)
+        return self.load(limit=limit, input_files=input_files, force_rebuild=True)
 
     def search(self, query: str, top_k: int = 3) -> str:
         """

@@ -18,8 +18,9 @@ qdrant-client>=1.7.0
 python-dotenv>=1.0.0
 rich>=13.0.0
 
-# === PHASE 3: API BRIDGE ===
+# === PHASE 3 & 4: API BRIDGE & AUTO-SYNC ===
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
 requests>=2.31.0
+watchdog>=3.0.0

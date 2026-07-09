@@ -1,50 +1,26 @@
 """
 mcp_server.py
-Model Context Protocol (MCP) Server stdio bridge.
-Exposes Memory (Mem0) and Knowledge (LlamaIndex RAG) as tools for AI Agents.
+Model Context Protocol (MCP) Server stdio bridge (Thin-Client).
+Acts as a lightweight proxy, sending HTTP requests to api_server.py.
+Requires zero heavy ML dependencies (no LlamaIndex, no Mem0, no QdrantClient).
 
 Run: python mcp_server.py
 """
 
 import os
-import sys
+import requests
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 # Load environment variables
 load_dotenv()
 
-# Add project root to sys.path to ensure agent_core is importable
-project_root = os.path.dirname(os.path.abspath(__file__))
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
-# Lazy import core managers to speed up startup
-from agent_core.memory import MemoryManager
-from agent_core.knowledge import KnowledgeBase
+API_BASE = "http://127.0.0.1:8000"
+API_KEY = os.getenv("APP_API_KEY", "my-super-secret-key-123")
+HEADERS = {"X-API-Key": API_KEY}
 
 # Initialize FastMCP server
-mcp = FastMCP("Memory-Second-Brain-Bridge")
-
-# Lazy initialized managers
-_memory_manager = None
-_knowledge_base = None
-
-
-def get_memory_manager():
-    global _memory_manager
-    if _memory_manager is None:
-        _memory_manager = MemoryManager()
-    return _memory_manager
-
-
-def get_knowledge_base():
-    global _knowledge_base
-    if _knowledge_base is None:
-        _knowledge_base = KnowledgeBase()
-        _knowledge_base.load()  # Index/Load documents on startup
-    return _knowledge_base
-
+mcp = FastMCP("Memory-Second-Brain-Bridge-Thin")
 
 @mcp.tool()
 def search_knowledge(query: str) -> str:
@@ -53,11 +29,12 @@ def search_knowledge(query: str) -> str:
     Use this tool when the user asks questions about Unity 6.3 APIs, physics, features, or project guidelines.
     """
     try:
-        kb = get_knowledge_base()
-        return kb.search(query, top_k=3)
+        resp = requests.get(f"{API_BASE}/rag/search", params={"q": query}, headers=HEADERS)
+        if resp.status_code == 200:
+            return resp.json().get("result", "No result")
+        return f"API Error: {resp.status_code} - {resp.text}"
     except Exception as e:
-        return f"Error searching RAG knowledge: {e}"
-
+        return f"Error searching RAG knowledge (Is API Server running?): {e}"
 
 @mcp.tool()
 def search_memory(query: str) -> str:
@@ -66,12 +43,12 @@ def search_memory(query: str) -> str:
     Use this tool to find user's coding styles, preferred tools, database ports, or past project decisions.
     """
     try:
-        mem = get_memory_manager()
-        memories = mem.search(query, limit=5)
-        return mem.format_for_prompt(memories)
+        resp = requests.get(f"{API_BASE}/memory/search", params={"q": query}, headers=HEADERS)
+        if resp.status_code == 200:
+            return resp.json().get("result", "No memories found")
+        return f"API Error: {resp.status_code} - {resp.text}"
     except Exception as e:
-        return f"Error searching Mem0 memory: {e}"
-
+        return f"Error searching Mem0 memory (Is API Server running?): {e}"
 
 @mcp.tool()
 def add_memory(text: str) -> str:
@@ -80,14 +57,15 @@ def add_memory(text: str) -> str:
     Use this tool when the user shares a personal style, choice, port, or coding rule.
     """
     try:
-        mem = get_memory_manager()
-        success = mem.add(text)
-        if success:
-            return f"Successfully recorded memory: '{text}'"
-        else:
-            return "Failed to save memory."
+        resp = requests.post(f"{API_BASE}/memory/add", json={"text": text}, headers=HEADERS)
+        if resp.status_code == 200:
+            success = resp.json().get("success", False)
+            if success:
+                return f"Successfully recorded memory: '{text}'"
+            return "Failed to save memory on server."
+        return f"API Error: {resp.status_code} - {resp.text}"
     except Exception as e:
-        return f"Error adding memory: {e}"
+        return f"Error adding memory (Is API Server running?): {e}"
 
 
 if __name__ == "__main__":
