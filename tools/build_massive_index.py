@@ -7,6 +7,7 @@ Uses local HuggingFace embeddings via CPU. Runs in batches to prevent OOM errors
 import os
 import sys
 import time
+import argparse
 
 # Add project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,25 +16,30 @@ if project_root not in sys.path:
 
 from agent_core.knowledge import KnowledgeBase
 
-MASSIVE_DOCS_DIR = os.path.join(project_root, "Unity_6_3_Markdown")
 BATCH_SIZE = 100  # Safe batch size for Ryzen 7 5800H / 16GB RAM
 VALID_EXTS = {".md", ".txt", ".json"}
 
-def get_all_valid_files():
+def get_all_valid_files(target_dir):
     valid_files = []
-    if not os.path.exists(MASSIVE_DOCS_DIR):
-        print(f"Directory not found: {MASSIVE_DOCS_DIR}")
+    if not os.path.exists(target_dir):
+        print(f"Directory not found: {target_dir}")
         return []
         
-    for root, _, files in os.walk(MASSIVE_DOCS_DIR):
+    for root, _, files in os.walk(target_dir):
         for f in files:
             if os.path.splitext(f)[1].lower() in VALID_EXTS:
                 valid_files.append(os.path.join(root, f))
     return valid_files
 
 def main():
-    print(f"Scanning for valid documents in: {MASSIVE_DOCS_DIR}")
-    files = get_all_valid_files()
+    parser = argparse.ArgumentParser(description="Batch index documents for RAG")
+    parser.add_argument("target_dir", help="Path to the directory containing Markdown/Text files to index")
+    args = parser.parse_args()
+
+    target_dir = os.path.abspath(args.target_dir)
+
+    print(f"Scanning for valid documents in: {target_dir}")
+    files = get_all_valid_files(target_dir)
     total_files = len(files)
     
     if total_files == 0:
@@ -52,12 +58,6 @@ def main():
         batch = files[i:i + BATCH_SIZE]
         print(f"\n--- Processing Batch {i//BATCH_SIZE + 1} ({i}/{total_files}) ---")
         
-        # We pass force_rebuild=False so it *appends* or creates new points,
-        # wait! LlamaIndex VectorStoreIndex.from_documents appends to the store!
-        # But kb.load() actually replaces if we just call it.
-        # To strictly append, we should use index.insert(doc) or similar.
-        # But actually QdrantVectorStore handles upserting automatically.
-        # For simplicity, kb.load(input_files=batch) will work and insert them.
         success = kb.load(input_files=batch, force_rebuild=True)
         if not success:
             print(f"Failed to process batch {i//BATCH_SIZE + 1}. Continuing...")

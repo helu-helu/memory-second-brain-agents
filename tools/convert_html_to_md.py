@@ -7,18 +7,15 @@ and converts them into clean Markdown files for RAG.
 import os
 import sys
 import glob
+import argparse
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SOURCE_DIR = os.path.join(project_root, "Unity_6_3_Archive")
-TARGET_DIR = os.path.join(project_root, "Unity_6_3_Markdown")
-
-def process_html_file(html_path):
+def process_html_file(html_path, source_dir, target_dir):
     # Determine target path
-    rel_path = os.path.relpath(html_path, SOURCE_DIR)
+    rel_path = os.path.relpath(html_path, source_dir)
     md_rel_path = os.path.splitext(rel_path)[0] + ".md"
-    target_path = os.path.join(TARGET_DIR, md_rel_path)
+    target_path = os.path.join(target_dir, md_rel_path)
     
     # Skip if already exists
     if os.path.exists(target_path):
@@ -32,8 +29,6 @@ def process_html_file(html_path):
             
         soup = BeautifulSoup(html_content, "html.parser")
         
-        # Unity docs usually store the main text in <div class="content"> or <div class="section">
-        # Let's try to find <div id="content-wrap"> -> <div class="content">
         main_content = None
         
         # Attempt 1: Standard Unity Docs format
@@ -61,22 +56,33 @@ def process_html_file(html_path):
         return False
 
 def main():
-    print(f"Scanning for HTML files in {SOURCE_DIR}...")
-    html_files = glob.glob(os.path.join(SOURCE_DIR, "**", "*.html"), recursive=True)
+    parser = argparse.ArgumentParser(description="Convert HTML docs to Markdown")
+    parser.add_argument("source_dir", help="Path to the source HTML directory")
+    parser.add_argument("target_dir", help="Path to the target Markdown directory")
+    args = parser.parse_args()
+
+    source_dir = os.path.abspath(args.source_dir)
+    target_dir = os.path.abspath(args.target_dir)
+
+    print(f"Scanning for HTML files in {source_dir}...")
+    html_files = glob.glob(os.path.join(source_dir, "**", "*.html"), recursive=True)
     total_files = len(html_files)
     
-    print(f"Found {total_files} HTML files. Starting conversion to Markdown in {TARGET_DIR}...")
+    if total_files == 0:
+        print("No HTML files found.")
+        return
+        
+    print(f"Found {total_files} HTML files. Starting conversion to Markdown in {target_dir}...")
     
-    # Optional: Since 39k files take a while, we'll print progress
     success_count = 0
     for i, file_path in enumerate(html_files):
-        if process_html_file(file_path):
+        if process_html_file(file_path, source_dir, target_dir):
             success_count += 1
             
         if (i + 1) % 500 == 0:
             print(f"Progress: {i + 1}/{total_files} files converted...")
             
-    print(f"Done! Successfully converted {success_count} files to {TARGET_DIR}")
+    print(f"Done! Successfully converted {success_count} files to {target_dir}")
 
 if __name__ == "__main__":
     main()
