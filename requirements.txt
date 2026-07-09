@@ -27,3 +27,7 @@ watchdog>=3.0.0
 
 # === PHASE 5: MASSIVE CORPUS (LOCAL EMBEDDING) ===
 llama-index-embeddings-huggingface>=0.1.0
+
+# === PHASE 5.5: HTML TO MD EXTRACTOR ===
+beautifulsoup4>=4.12.0
+markdownify>=0.11.0

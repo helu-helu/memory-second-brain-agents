@@ -15,7 +15,7 @@ if project_root not in sys.path:
 
 from agent_core.knowledge import KnowledgeBase
 
-MASSIVE_DOCS_DIR = os.path.join(project_root, "Unity_6_3_Archive")
+MASSIVE_DOCS_DIR = os.path.join(project_root, "Unity_6_3_Markdown")
 BATCH_SIZE = 100  # Safe batch size for Ryzen 7 5800H / 16GB RAM
 VALID_EXTS = {".md", ".txt", ".json"}
 
@@ -63,7 +63,7 @@ def main():
             print(f"Failed to process batch {i//BATCH_SIZE + 1}. Continuing...")
             
     end_time = time.time()
-    print(f"\n✅ Indexing complete! Time taken: {end_time - start_time:.2f} seconds.")
+    print(f"\nIndexing complete! Time taken: {end_time - start_time:.2f} seconds.")
 
 if __name__ == "__main__":
     main()
