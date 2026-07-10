@@ -43,15 +43,30 @@ class ContextBuilder:
     def build(self, user_query: str) -> str:
         """
         Tạo System Prompt hoàn chỉnh dựa trên câu hỏi hiện tại.
-        
-        Quy trình:
-        1. Tìm ký ức liên quan trong Mem0 (semantic search)
-        2. Tìm tài liệu liên quan trong RAG (semantic search)
-        3. Gộp vào template System Prompt
+        (Phiên bản chạy tuần tự - cũ)
         """
         memories = self.memory.search(user_query, limit=5)
         memory_text = self.memory.format_for_prompt(memories)
         knowledge_text = self.knowledge.search(user_query, top_k=3)
+
+        return SYSTEM_PROMPT_TEMPLATE.format(
+            memories=memory_text,
+            knowledge=knowledge_text
+        )
+
+    async def build_async(self, user_query: str) -> str:
+        """
+        Tạo System Prompt hoàn chỉnh bằng cách chạy Song Song (Parallel)
+        tìm kiếm trên cả RAG và Mem0. Tăng tốc độ gấp đôi.
+        """
+        import asyncio
+        
+        # Chạy 2 hàm search blocking trong các thread riêng biệt cùng lúc
+        memories_task = asyncio.to_thread(self.memory.search, user_query, limit=5)
+        knowledge_task = asyncio.to_thread(self.knowledge.search, user_query, top_k=3)
+        
+        memories, knowledge_text = await asyncio.gather(memories_task, knowledge_task)
+        memory_text = self.memory.format_for_prompt(memories)
 
         return SYSTEM_PROMPT_TEMPLATE.format(
             memories=memory_text,

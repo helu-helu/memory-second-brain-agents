@@ -108,7 +108,8 @@ async def rag_search(q: str, api_key: str = Depends(get_api_key)):
         result = kb.search(q, top_k=3)
         return {"result": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[Error] /rag/search: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/memory/search")
 async def memory_search(q: str, api_key: str = Depends(get_api_key)):
@@ -119,7 +120,8 @@ async def memory_search(q: str, api_key: str = Depends(get_api_key)):
         formatted = mem.format_for_prompt(memories)
         return {"result": formatted}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[Error] /memory/search: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/memory/add")
 async def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key)):
@@ -129,7 +131,24 @@ async def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key))
         success = mem.add(req.text)
         return {"success": success}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[Error] /memory/add: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/context/build")
+async def context_build(q: str, api_key: str = Depends(get_api_key)):
+    """Build system prompt in parallel using Asyncio."""
+    try:
+        from agent_core.context_builder import ContextBuilder
+        mem = get_memory()
+        kb = get_knowledge()
+        ctx_builder = ContextBuilder(memory=mem, knowledge=kb)
+        
+        # Gọi song song để giảm nửa thời gian chờ
+        prompt = await ctx_builder.build_async(q)
+        return {"prompt": prompt}
+    except Exception as e:
+        print(f"[Error] /context/build: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
     import uvicorn
