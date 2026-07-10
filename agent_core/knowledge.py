@@ -9,7 +9,7 @@ Stores vector database locally in ./db/qdrant_rag, loads existing index if avail
 import os
 from dotenv import load_dotenv
 
-from agent_core.config import config, DOCS_DIR, QDRANT_PATH, COLLECTION_NAME
+from agent_core.config import config, DOCS_DIR, QDRANT_PATH, COLLECTION_NAME, ROOT_DIR
 
 load_dotenv()
 
@@ -64,7 +64,7 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
-            client = QdrantClient(host=config["memory"]["qdrant"]["host"], port=config["memory"]["qdrant"]["port"])
+            client = QdrantClient(path=os.path.join(ROOT_DIR, config["rag"]["db_path"].replace("./", "")))
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
 
             # Check if index already exists in Qdrant to avoid rebuilding (saves tokens and time)

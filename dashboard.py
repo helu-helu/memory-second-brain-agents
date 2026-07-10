@@ -7,8 +7,9 @@ import pandas as pd
 
 load_dotenv()
 
-API_KEY = os.getenv("APP_API_KEY", "default-secret-key")
+# Cấu hình API Server
 API_BASE = "http://127.0.0.1:8001"
+API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 HEADERS = {"X-API-Key": API_KEY}
 
 st.set_page_config(page_title="Second Brain Dashboard", page_icon=":material/memory:", layout="wide")
@@ -51,8 +52,24 @@ with tab2:
     
     with col1:
         with st.container(border=True):
+            st.subheader(":material/search: Tìm kiếm Ký ức")
+            search_mem = st.text_input("Tìm kiếm:", placeholder="Ví dụ: tôi thích gì?")
+            if st.button(":material/search: Tìm Ký ức"):
+                if search_mem:
+                    with st.spinner("Đang tìm..."):
+                        try:
+                            res = requests.get(f"{API_BASE}/memory/search", params={"q": search_mem, "agent_id": agent_id}, headers=HEADERS)
+                            if res.status_code == 200:
+                                st.markdown("**Kết quả:**")
+                                st.info(res.json().get("result", ""))
+                            else:
+                                st.error("Lỗi khi tìm kiếm.")
+                        except Exception as e:
+                            st.error(f"Lỗi kết nối: {e}")
+                            
+        with st.container(border=True):
             st.subheader(":material/add: Thêm ký ức mới")
-            new_memory = st.text_area("Nội dung ký ức:")
+            new_memory = st.text_area("Nội dung ký ức (Lưu ý: Đây là để THÊM mới, không phải để tìm kiếm):")
             if st.button(":material/save: Thêm Ký Ức"):
                 if new_memory:
                     with st.spinner("Đang thêm..."):

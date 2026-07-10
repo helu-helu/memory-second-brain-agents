@@ -37,8 +37,7 @@ MEM0_CONFIG = {
         "provider": "qdrant",
         "config": {
             "collection_name": config["memory"]["qdrant"]["collection_name"],
-            "host": config["memory"]["qdrant"]["host"],
-            "port": config["memory"]["qdrant"]["port"],
+            "path": os.path.join(ROOT_DIR, config["memory"]["qdrant"]["path"].replace("./", "")),
             "embedding_model_dims": config["memory"]["qdrant"]["embedding_model_dims"]
         }
     },

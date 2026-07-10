@@ -14,13 +14,12 @@ def main():
     print("  QDRANT REBUILD SCRIPT (PHASE 2)")
     print("=" * 55)
     
-    qdrant_host = config["memory"]["qdrant"]["host"]
-    qdrant_port = config["memory"]["qdrant"]["port"]
+    qdrant_path = os.path.join(project_root, config["memory"]["qdrant"]["path"].replace("./", ""))
     
     try:
-        client = QdrantClient(host=qdrant_host, port=qdrant_port)
+        client = QdrantClient(path=qdrant_path)
     except Exception as e:
-        print(f"[Error] Could not connect to Qdrant at {qdrant_host}:{qdrant_port} - {e}")
+        print(f"[Error] Could not connect to local Qdrant at {qdrant_path} - {e}")
         return
 
     # Drop RAG Collection
