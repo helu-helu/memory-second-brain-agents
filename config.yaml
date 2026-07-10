@@ -8,6 +8,7 @@ app:
 rag:
   docs_dir: "./docs"
   watch_dir: "./docs/daily"
+  workflows_dir: "./docs/Workflows"
   db_path: "./db/qdrant_rag"
   collection_name: "personal_knowledge_base"
   embedding_model: "BAAI/bge-small-en-v1.5"
