@@ -22,6 +22,14 @@ QDRANT_PATH = config["rag"]["db_path"]
 COLLECTION_NAME = config["rag"]["collection_name"]
 
 
+def extract_metadata_from_path(file_path: str) -> dict:
+    """Extract folder names inside DOCS_DIR as tags."""
+    rel_path = os.path.relpath(file_path, DOCS_DIR)
+    parts = os.path.normpath(rel_path).split(os.sep)[:-1]  # Exclude filename
+    tags = [p for p in parts if p != "." and p != ".."]
+    return {"tags": tags}
+
+
 class KnowledgeBase:
     """
     Manages static knowledge retrieval from ./docs.
@@ -84,7 +92,10 @@ class KnowledgeBase:
             # Rebuild index from files
             if input_files:
                 print(f"[KnowledgeBase] Indexing specific files: {input_files}")
-                reader = SimpleDirectoryReader(input_files=input_files)
+                reader = SimpleDirectoryReader(
+                    input_files=input_files,
+                    file_metadata=extract_metadata_from_path
+                )
             else:
                 # Count valid document files
                 valid_exts = {".md", ".html", ".json", ".txt"}
@@ -107,7 +118,8 @@ class KnowledgeBase:
                 reader = SimpleDirectoryReader(
                     input_dir=DOCS_DIR, recursive=True,
                     required_exts=list(valid_exts),
-                    num_files_limit=limit
+                    num_files_limit=limit,
+                    file_metadata=extract_metadata_from_path
                 )
 
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
@@ -128,17 +140,34 @@ class KnowledgeBase:
         self._ready = False
         return self.load(limit=limit, input_files=input_files, force_rebuild=True)
 
-    def search(self, query: str, top_k: int = None) -> str:
+    def search(self, query: str, top_k: int = None, tags: list[str] = None) -> str:
         """
         Search and retrieve raw text snippets.
-        No LLM synthesis is done here to save context tokens.
+        Uses HyDE Query Transform for accuracy and supports metadata tag filtering.
         """
         if not self._ready or self._index is None:
             return "(KnowledgeBase not loaded. Please call kb.load() first)"
         try:
+            from llama_index.core.indices.query.query_transform import HyDEQueryTransform
+            from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
+
             top_k = top_k or config["rag"]["top_k"]
-            retriever = self._index.as_retriever(similarity_top_k=top_k)
-            nodes = retriever.retrieve(query)
+            
+            # Setup Metadata Filters
+            filters = None
+            if tags:
+                filter_list = [ExactMatchFilter(key="tags", value=tag) for tag in tags]
+                filters = MetadataFilters(filters=filter_list)
+
+            retriever = self._index.as_retriever(similarity_top_k=top_k, filters=filters)
+            
+            # Setup HyDE Query Rewriting
+            print(f"[KnowledgeBase] Running HyDE Query Transform for: '{query}'")
+            hyde = HyDEQueryTransform(include_original=True)
+            query_bundle = hyde(query)
+            print(f"[KnowledgeBase] HyDE generated fake answer length: {len(query_bundle.custom_embedding_strs[0]) if query_bundle.custom_embedding_strs else 0}")
+            
+            nodes = retriever.retrieve(query_bundle)
             if not nodes:
                 return "(No matching documentation found)"
             parts = []

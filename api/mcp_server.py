@@ -8,6 +8,9 @@ Run: python mcp_server.py
 """
 
 import os
+import sys
+import subprocess
+import time
 import requests
 import yaml
 from dotenv import load_dotenv
@@ -22,20 +25,27 @@ with open(config_path, "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 API_BASE = config["app"]["api_server"]["base_url"]
-API_KEY = os.getenv("APP_API_KEY", "my-super-secret-key-123")
+API_KEY = os.environ["APP_API_KEY"]
 HEADERS = {config["app"]["api_key_name"]: API_KEY}
+
+api_session = requests.Session()
+api_session.headers.update(HEADERS)
 
 # Initialize FastMCP server
 mcp = FastMCP("Memory-Second-Brain-Bridge-Thin")
 
 @mcp.tool()
-def search_knowledge(query: str) -> str:
+def search_knowledge(query: str, tags: list[str] = None) -> str:
     """
     Search static technical documentation (like Unity 6.3 reference or project manuals) inside the RAG database.
     Use this tool when the user asks questions about Unity 6.3 APIs, physics, features, or project guidelines.
+    Optionally pass 'tags' (e.g. ["Unity", "6.3"]) to filter metadata based on directory structure.
     """
     try:
-        resp = requests.get(f"{API_BASE}/rag/search", params={"q": query}, headers=HEADERS)
+        params = {"q": query}
+        if tags:
+            params["tags"] = tags
+        resp = api_session.get(f"{API_BASE}/rag/search", params=params)
         if resp.status_code == 200:
             return resp.json().get("result", "No result")
         return f"API Error: {resp.status_code} - {resp.text}"
@@ -49,7 +59,7 @@ def search_memory(query: str) -> str:
     Use this tool to find user's coding styles, preferred tools, database ports, or past project decisions.
     """
     try:
-        resp = requests.get(f"{API_BASE}/memory/search", params={"q": query}, headers=HEADERS)
+        resp = api_session.get(f"{API_BASE}/memory/search", params={"q": query})
         if resp.status_code == 200:
             return resp.json().get("result", "No memories found")
         return f"API Error: {resp.status_code} - {resp.text}"
@@ -63,7 +73,7 @@ def add_memory(text: str) -> str:
     Use this tool when the user shares a personal style, choice, port, or coding rule.
     """
     try:
-        resp = requests.post(f"{API_BASE}/memory/add", json={"text": text}, headers=HEADERS)
+        resp = api_session.post(f"{API_BASE}/memory/add", json={"text": text})
         if resp.status_code == 200:
             success = resp.json().get("success", False)
             if success:
@@ -74,6 +84,23 @@ def add_memory(text: str) -> str:
         return f"Error adding memory (Is API Server running?): {e}"
 
 
+def ensure_api_running():
+    try:
+        resp = requests.get(f"{API_BASE}/ping", timeout=2)
+        if resp.status_code == 200:
+            return
+    except requests.exceptions.RequestException:
+        pass
+    
+    # Not running, start it
+    api_script = os.path.join(project_root, "api", "api_server.py")
+    # Start process in background
+    subprocess.Popen([sys.executable, api_script], cwd=project_root)
+    # Wait briefly for it to start
+    time.sleep(3)
+
+
 if __name__ == "__main__":
+    ensure_api_running()
     # Start stdio server
     mcp.run()

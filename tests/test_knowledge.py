@@ -15,6 +15,11 @@ def test_load_skip_empty_directory(mock_qdrant, mocker, tmp_path):
 def test_search_knowledge(mock_qdrant, mocker):
     """Test searching the knowledge base returns properly formatted string."""
     mocker.patch("agent_core.knowledge.KnowledgeBase._setup_settings")
+    mock_hyde_cls = mocker.patch("llama_index.core.indices.query.query_transform.HyDEQueryTransform")
+    mock_bundle = MagicMock()
+    mock_bundle.custom_embedding_strs = ["mock"]
+    mock_hyde_cls.return_value.return_value = mock_bundle
+
     kb = KnowledgeBase()
     
     mock_index = MagicMock()
@@ -40,15 +45,19 @@ def test_search_knowledge(mock_qdrant, mocker):
     assert "This is a mock document about python." in result
     
     # Verify engine was called
-    mock_retriever.retrieve.assert_called_once_with("mock query python")
+    mock_retriever.retrieve.assert_called_once_with(mock_bundle)
 
 def test_search_knowledge_empty(mock_qdrant, mocker):
     """Test searching returns not found when empty."""
     mocker.patch("agent_core.knowledge.KnowledgeBase._setup_settings")
+    mock_hyde_cls = mocker.patch("llama_index.core.indices.query.query_transform.HyDEQueryTransform")
+    mock_bundle = MagicMock()
+    mock_bundle.custom_embedding_strs = ["mock"]
+    mock_hyde_cls.return_value.return_value = mock_bundle
+
     kb = KnowledgeBase()
     
     mock_index = MagicMock()
-    mock_engine = MagicMock()
     mock_index.as_retriever.return_value.retrieve.return_value = []
     
     kb._index = mock_index

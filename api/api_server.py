@@ -11,9 +11,11 @@ import sys
 import threading
 import time
 import yaml
-from fastapi import FastAPI, HTTPException, Security, Depends
+import secrets
+from fastapi import FastAPI, HTTPException, Security, Depends, Query
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
+from typing import List, Optional
 from dotenv import load_dotenv
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -33,12 +35,12 @@ config_path = os.path.join(project_root, "config.yaml")
 with open(config_path, "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
-API_KEY = os.getenv("APP_API_KEY", "my-super-secret-key-123")
+API_KEY = os.environ["APP_API_KEY"]
 API_KEY_NAME = config["app"]["api_key_name"]
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 async def get_api_key(api_key_header: str = Security(api_key_header)):
-    if api_key_header == API_KEY:
+    if api_key_header and secrets.compare_digest(api_key_header, API_KEY):
         return api_key_header
     raise HTTPException(status_code=403, detail="Could not validate API Key")
 
@@ -65,19 +67,30 @@ def get_knowledge():
         _knowledge_base.load()
     return _knowledge_base
 
+_reload_timer = None
+
+def _trigger_reload():
+    print("[Watchdog] Debounce finished. Reloading RAG KnowledgeBase...")
+    kb = get_knowledge()
+    kb.reload()
+
 class DocsChangeHandler(FileSystemEventHandler):
     """Watchdog event handler for docs/ directory"""
+    def _schedule_reload(self, event_type, path):
+        global _reload_timer
+        if _reload_timer:
+            _reload_timer.cancel()
+        print(f"[Watchdog] {event_type} at {path}. Scheduling reload in 5s...")
+        _reload_timer = threading.Timer(5.0, _trigger_reload)
+        _reload_timer.start()
+
     def on_modified(self, event):
         if not event.is_directory and not event.src_path.endswith('~'):
-            print(f"[Watchdog] Detected change in {event.src_path}. Reloading RAG KnowledgeBase...")
-            kb = get_knowledge()
-            kb.reload()
+            self._schedule_reload("Change", event.src_path)
             
     def on_created(self, event):
         if not event.is_directory:
-            print(f"[Watchdog] Detected new file {event.src_path}. Reloading RAG KnowledgeBase...")
-            kb = get_knowledge()
-            kb.reload()
+            self._schedule_reload("New file", event.src_path)
 
 def start_watchdog():
     """Starts the directory observer in a background thread"""
@@ -103,22 +116,26 @@ async def startup_event():
     watchdog_thread = threading.Thread(target=start_watchdog, daemon=True)
     watchdog_thread.start()
 
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}
+
 class MemoryAddRequest(BaseModel):
     text: str
 
 @app.get("/rag/search")
-async def rag_search(q: str, api_key: str = Depends(get_api_key)):
+def rag_search(q: str, tags: list[str] = Query(None), api_key: str = Depends(get_api_key)):
     """Search static RAG documents."""
     try:
         kb = get_knowledge()
-        result = kb.search(q, top_k=3)
+        result = kb.search(q, top_k=3, tags=tags)
         return {"result": result}
     except Exception as e:
         print(f"[Error] /rag/search: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/memory/search")
-async def memory_search(q: str, api_key: str = Depends(get_api_key)):
+def memory_search(q: str, api_key: str = Depends(get_api_key)):
     """Search dynamic long-term memories."""
     try:
         mem = get_memory()
@@ -127,10 +144,10 @@ async def memory_search(q: str, api_key: str = Depends(get_api_key)):
         return {"result": formatted}
     except Exception as e:
         print(f"[Error] /memory/search: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/memory/add")
-async def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key)):
+def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key)):
     """Add a new dynamic memory."""
     try:
         mem = get_memory()
@@ -138,7 +155,7 @@ async def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key))
         return {"success": success}
     except Exception as e:
         print(f"[Error] /memory/add: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/context/build")
 async def context_build(q: str, api_key: str = Depends(get_api_key)):
