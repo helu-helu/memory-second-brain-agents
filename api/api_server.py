@@ -29,11 +29,7 @@ if project_root not in sys.path:
 
 from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
-
-# Load config
-config_path = os.path.join(project_root, "config.yaml")
-with open(config_path, "r", encoding="utf-8") as f:
-    config = yaml.safe_load(f)
+from agent_core.config import config, DOCS_DIR
 
 API_KEY = os.environ["APP_API_KEY"]
 API_KEY_NAME = config["app"]["api_key_name"]
@@ -76,30 +72,24 @@ def _trigger_reload():
 
 class DocsChangeHandler(FileSystemEventHandler):
     """Watchdog event handler for docs/ directory"""
-    def _schedule_reload(self, event_type, path):
+    def on_any_event(self, event):
+        # Ignore hidden files or directories
+        if event.is_directory or os.path.basename(event.src_path).startswith('.'):
+            return
+        
+        # Debounce the rebuild
         global _reload_timer
-        if _reload_timer:
+        if _reload_timer is not None:
             _reload_timer.cancel()
-        print(f"[Watchdog] {event_type} at {path}. Scheduling reload in 5s...")
         _reload_timer = threading.Timer(5.0, _trigger_reload)
         _reload_timer.start()
 
-    def on_modified(self, event):
-        if not event.is_directory and not event.src_path.endswith('~'):
-            self._schedule_reload("Change", event.src_path)
-            
-    def on_created(self, event):
-        if not event.is_directory:
-            self._schedule_reload("New file", event.src_path)
-
 def start_watchdog():
     """Starts the directory observer in a background thread"""
-    docs_dir = os.path.join(project_root, os.path.normpath(config["rag"]["watch_dir"]))
-    os.makedirs(docs_dir, exist_ok=True)
-    
-    event_handler = DocsChangeHandler()
     observer = Observer()
-    observer.schedule(event_handler, path=docs_dir, recursive=True)
+    docs_dir = DOCS_DIR
+    os.makedirs(docs_dir, exist_ok=True)
+    observer.schedule(DocsChangeHandler(), docs_dir, recursive=True)
     observer.start()
     print(f"[Watchdog] Started monitoring {docs_dir} for Auto-Sync.")
     try:

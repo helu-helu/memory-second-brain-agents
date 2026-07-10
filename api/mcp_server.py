@@ -12,17 +12,15 @@ import sys
 import subprocess
 import time
 import requests
-import yaml
-from dotenv import load_dotenv
+import requests
 from mcp.server.fastmcp import FastMCP
 
-# Load environment variables
-load_dotenv()
-
+# Add project root to sys.path to import agent_core
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-config_path = os.path.join(project_root, "config.yaml")
-with open(config_path, "r", encoding="utf-8") as f:
-    config = yaml.safe_load(f)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from agent_core.config import config
 
 API_BASE = config["app"]["api_server"]["base_url"]
 API_KEY = os.environ["APP_API_KEY"]

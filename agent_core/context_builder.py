@@ -40,19 +40,6 @@ class ContextBuilder:
         self.memory = memory
         self.knowledge = knowledge
 
-    def build(self, user_query: str) -> str:
-        """
-        Tạo System Prompt hoàn chỉnh dựa trên câu hỏi hiện tại.
-        (Phiên bản chạy tuần tự - cũ)
-        """
-        memories = self.memory.search(user_query, limit=5)
-        memory_text = self.memory.format_for_prompt(memories)
-        knowledge_text = self.knowledge.search(user_query, top_k=3)
-
-        return SYSTEM_PROMPT_TEMPLATE.format(
-            memories=memory_text,
-            knowledge=knowledge_text
-        )
 
     async def build_async(self, user_query: str) -> str:
         """

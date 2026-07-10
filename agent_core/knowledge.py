@@ -7,19 +7,11 @@ Stores vector database locally in ./db/qdrant_rag, loads existing index if avail
 """
 
 import os
-import yaml
 from dotenv import load_dotenv
 
+from agent_core.config import config, DOCS_DIR, QDRANT_PATH, COLLECTION_NAME
+
 load_dotenv()
-
-# Load config
-config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.yaml")
-with open(config_path, "r", encoding="utf-8") as f:
-    config = yaml.safe_load(f)
-
-DOCS_DIR = config["rag"]["docs_dir"]
-QDRANT_PATH = config["rag"]["db_path"]
-COLLECTION_NAME = config["rag"]["collection_name"]
 
 
 def extract_metadata_from_path(file_path: str) -> dict:
