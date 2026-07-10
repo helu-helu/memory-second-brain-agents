@@ -28,8 +28,7 @@ MEM0_CONFIG = {
     "embedder": {
         "provider": config["memory"]["embedder"]["provider"],
         "config": {
-            "model": config["memory"]["embedder"]["model"],
-            "api_key": os.getenv("GEMINI_API_KEY"),
+            "model": config["memory"]["embedder"]["model"]
         }
     },
     "vector_store": {
@@ -44,6 +43,9 @@ MEM0_CONFIG = {
     "history_db_path": config["memory"]["history_db_path"],
     "version": config["memory"]["version"]
 }
+
+if MEM0_CONFIG["embedder"]["provider"] != "huggingface":
+    MEM0_CONFIG["embedder"]["config"]["api_key"] = os.getenv("GEMINI_API_KEY")
 
 
 class MemoryManager:
