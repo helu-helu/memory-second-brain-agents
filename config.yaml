@@ -1,0 +1,31 @@
+app:
+  api_key_name: "X-API-Key"
+  api_server:
+    host: "127.0.0.1"
+    port: 8000
+    base_url: "http://127.0.0.1:8000"
+
+rag:
+  docs_dir: "./docs"
+  watch_dir: "./docs/daily"
+  db_path: "./db/qdrant_rag"
+  collection_name: "personal_knowledge_base"
+  embedding_model: "BAAI/bge-small-en-v1.5"
+  llm_model: "gemini-2.5-flash"
+  top_k: 3
+
+memory:
+  version: "v1.1"
+  history_db_path: "./db/mem0_history.db"
+  qdrant:
+    host: "localhost"
+    port: 6333
+    collection_name: "personal_agent_memory"
+    embedding_model_dims: 768
+  llm:
+    provider: "gemini"
+    model: "gemini-2.5-flash"
+    temperature: 0
+  embedder:
+    provider: "gemini"
+    model: "gemini-embedding-2"

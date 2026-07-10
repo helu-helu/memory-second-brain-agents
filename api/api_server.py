@@ -10,6 +10,7 @@ import os
 import sys
 import threading
 import time
+import yaml
 from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
@@ -20,15 +21,20 @@ from watchdog.events import FileSystemEventHandler
 load_dotenv()
 
 # Add project root to sys.path
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
 from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
 
+# Load config
+config_path = os.path.join(project_root, "config.yaml")
+with open(config_path, "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
+
 API_KEY = os.getenv("APP_API_KEY", "my-super-secret-key-123")
-API_KEY_NAME = "X-API-Key"
+API_KEY_NAME = config["app"]["api_key_name"]
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 async def get_api_key(api_key_header: str = Security(api_key_header)):
@@ -75,7 +81,7 @@ class DocsChangeHandler(FileSystemEventHandler):
 
 def start_watchdog():
     """Starts the directory observer in a background thread"""
-    docs_dir = os.path.join(project_root, "docs", "daily")
+    docs_dir = os.path.join(project_root, os.path.normpath(config["rag"]["watch_dir"]))
     os.makedirs(docs_dir, exist_ok=True)
     
     event_handler = DocsChangeHandler()
@@ -152,4 +158,4 @@ async def context_build(q: str, api_key: str = Depends(get_api_key)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api_server:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run("api_server:app", host=config["app"]["api_server"]["host"], port=config["app"]["api_server"]["port"], reload=False)

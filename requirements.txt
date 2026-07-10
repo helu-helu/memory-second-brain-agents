@@ -17,6 +17,7 @@ qdrant-client>=1.7.0
 # === UTILS ===
 python-dotenv>=1.0.0
 rich>=13.0.0
+pyyaml>=6.0.1
 
 # === PHASE 3 & 4: API BRIDGE & AUTO-SYNC ===
 fastapi>=0.100.0

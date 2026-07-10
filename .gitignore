@@ -42,3 +42,6 @@ Thumbs.db
 # Project-specific Temporary Files
 scratch/
 session_checkpoint.md
+
+# Agent System Prompt
+.agents/

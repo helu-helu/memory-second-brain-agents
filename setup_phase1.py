@@ -30,9 +30,15 @@ def check_libs():
         "llama_index": "llama_index.core",
         "qdrant_client": "qdrant_client",
         "dotenv": "dotenv",
+        "pyyaml": "yaml"
     }
-    import importlib.util
-    missing = [pkg for pkg, mod in libs.items() if importlib.util.find_spec(mod) is None]
+    import importlib
+    missing = []
+    for pkg, mod in libs.items():
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            missing.append(pkg)
     if missing:
         print(f"  [ERROR] Missing packages: {', '.join(missing)}")
         print("  -> Run: pip install -r requirements.txt")

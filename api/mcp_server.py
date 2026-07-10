@@ -9,15 +9,21 @@ Run: python mcp_server.py
 
 import os
 import requests
+import yaml
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 # Load environment variables
 load_dotenv()
 
-API_BASE = "http://127.0.0.1:8000"
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+config_path = os.path.join(project_root, "config.yaml")
+with open(config_path, "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
+
+API_BASE = config["app"]["api_server"]["base_url"]
 API_KEY = os.getenv("APP_API_KEY", "my-super-secret-key-123")
-HEADERS = {"X-API-Key": API_KEY}
+HEADERS = {config["app"]["api_key_name"]: API_KEY}
 
 # Initialize FastMCP server
 mcp = FastMCP("Memory-Second-Brain-Bridge-Thin")

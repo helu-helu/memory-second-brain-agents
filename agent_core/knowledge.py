@@ -7,13 +7,19 @@ Stores vector database locally in ./db/qdrant_rag, loads existing index if avail
 """
 
 import os
+import yaml
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DOCS_DIR = "./docs"
-QDRANT_PATH = "./db/qdrant_rag"
-COLLECTION_NAME = "personal_knowledge_base"
+# Load config
+config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.yaml")
+with open(config_path, "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
+
+DOCS_DIR = config["rag"]["docs_dir"]
+QDRANT_PATH = config["rag"]["db_path"]
+COLLECTION_NAME = config["rag"]["collection_name"]
 
 
 class KnowledgeBase:
@@ -38,11 +44,11 @@ class KnowledgeBase:
         api_key = os.getenv("GEMINI_API_KEY")
         
         # 1. Use HuggingFace for offline, unlimited local embeddings (CPU optimized for Ryzen 7)
-        Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        Settings.embed_model = HuggingFaceEmbedding(model_name=config["rag"]["embedding_model"])
         
         # 2. Use Gemini for LLM synthesis (if needed)
         Settings.llm = GoogleGenAI(
-            model="gemini-2.5-flash", api_key=api_key
+            model=config["rag"]["llm_model"], api_key=api_key
         )
 
     def load(self, limit: int = None, input_files: list[str] = None, force_rebuild: bool = False) -> bool:
@@ -58,7 +64,7 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
-            client = QdrantClient(host="localhost", port=6333)
+            client = QdrantClient(host=config["memory"]["qdrant"]["host"], port=config["memory"]["qdrant"]["port"])
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
 
             # Check if index already exists in Qdrant to avoid rebuilding (saves tokens and time)
@@ -122,7 +128,7 @@ class KnowledgeBase:
         self._ready = False
         return self.load(limit=limit, input_files=input_files, force_rebuild=True)
 
-    def search(self, query: str, top_k: int = 3) -> str:
+    def search(self, query: str, top_k: int = None) -> str:
         """
         Search and retrieve raw text snippets.
         No LLM synthesis is done here to save context tokens.
@@ -130,6 +136,7 @@ class KnowledgeBase:
         if not self._ready or self._index is None:
             return "(KnowledgeBase not loaded. Please call kb.load() first)"
         try:
+            top_k = top_k or config["rag"]["top_k"]
             retriever = self._index.as_retriever(similarity_top_k=top_k)
             nodes = retriever.retrieve(query)
             if not nodes:
