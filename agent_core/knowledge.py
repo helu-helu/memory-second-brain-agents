@@ -114,13 +114,27 @@ class KnowledgeBase:
                     file_metadata=extract_metadata_from_path
                 )
 
+            from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
+            
+            # Apply Phase 2: Advanced Semantic Chunking
+            md_parser = MarkdownNodeParser()
+            text_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=100)
+            
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
             documents = reader.load_data()
+            
+            # Set deterministic doc_id based on file path for easy updates
+            for doc in documents:
+                doc.doc_id = doc.metadata.get("file_path", doc.doc_id)
+                
             self._index = VectorStoreIndex.from_documents(
-                documents, storage_context=storage_context, show_progress=True
+                documents, 
+                storage_context=storage_context, 
+                transformations=[md_parser, text_parser],
+                show_progress=True
             )
             self._ready = True
-            print(f"[KnowledgeBase] [SUCCESS] Indexed {len(documents)} document chunks.")
+            print(f"[KnowledgeBase] [SUCCESS] Indexed {len(documents)} documents using Semantic Chunking.")
             return True
         except Exception as e:
             print(f"[KnowledgeBase.load] Error: {e}")
@@ -131,6 +145,30 @@ class KnowledgeBase:
         self._index = None
         self._ready = False
         return self.load(limit=limit, input_files=input_files, force_rebuild=True)
+
+    def insert_file(self, file_path: str) -> bool:
+        """Incremental RAG Sync: Update a single file without rebuilding everything."""
+        if not self._ready or self._index is None:
+            return self.load()
+        try:
+            from llama_index.core import SimpleDirectoryReader
+            reader = SimpleDirectoryReader(
+                input_files=[file_path], 
+                file_metadata=extract_metadata_from_path
+            )
+            documents = reader.load_data()
+            
+            # Use file_path as doc_id to overwrite existing embeddings
+            for doc in documents:
+                doc.doc_id = doc.metadata.get("file_path", file_path)
+                
+            for doc in documents:
+                self._index.insert(doc)
+            print(f"[KnowledgeBase] [Incremental Sync] Successfully updated: {file_path}")
+            return True
+        except Exception as e:
+            print(f"[KnowledgeBase] [Incremental Sync] Failed for {file_path}: {e}")
+            return False
 
     def search(self, query: str, top_k: int = None, tags: list[str] = None) -> str:
         """

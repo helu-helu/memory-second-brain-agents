@@ -77,12 +77,18 @@ class DocsChangeHandler(FileSystemEventHandler):
         if event.is_directory or os.path.basename(event.src_path).startswith('.'):
             return
         
-        # Debounce the rebuild
-        global _reload_timer
-        if _reload_timer is not None:
-            _reload_timer.cancel()
-        _reload_timer = threading.Timer(5.0, _trigger_reload)
-        _reload_timer.start()
+        # Apply Phase 2: Incremental RAG Sync
+        # Instead of reloading everything, we just insert the modified/created file
+        kb = get_knowledge()
+        if hasattr(kb, "insert_file"):
+            kb.insert_file(event.src_path)
+        else:
+            # Fallback if insert_file is not available
+            global _reload_timer
+            if _reload_timer is not None:
+                _reload_timer.cancel()
+            _reload_timer = threading.Timer(5.0, _trigger_reload)
+            _reload_timer.start()
 
 def start_watchdog():
     """Starts the directory observer in a background thread"""
@@ -112,6 +118,7 @@ async def ping():
 
 class MemoryAddRequest(BaseModel):
     text: str
+    agent_id: str = "default_user"
 
 @app.get("/rag/search")
 def rag_search(q: str, tags: list[str] = Query(None), api_key: str = Depends(get_api_key)):
@@ -125,11 +132,11 @@ def rag_search(q: str, tags: list[str] = Query(None), api_key: str = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/memory/search")
-def memory_search(q: str, api_key: str = Depends(get_api_key)):
+def memory_search(q: str, agent_id: str = "default_user", api_key: str = Depends(get_api_key)):
     """Search dynamic long-term memories."""
     try:
         mem = get_memory()
-        memories = mem.search(q, limit=5)
+        memories = mem.search(q, limit=5, agent_id=agent_id)
         formatted = mem.format_for_prompt(memories)
         return {"result": formatted}
     except Exception as e:
@@ -141,14 +148,25 @@ def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key)):
     """Add a new dynamic memory."""
     try:
         mem = get_memory()
-        success = mem.add(req.text)
+        success = mem.add(req.text, agent_id=req.agent_id)
         return {"success": success}
     except Exception as e:
         print(f"[Error] /memory/add: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/memory/all")
+def memory_all(agent_id: str = "default_user", api_key: str = Depends(get_api_key)):
+    """Get all dynamic memories for an agent."""
+    try:
+        mem = get_memory()
+        memories = mem.get_all(agent_id=agent_id)
+        return {"memories": memories}
+    except Exception as e:
+        print(f"[Error] /memory/all: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/context/build")
-async def context_build(q: str, api_key: str = Depends(get_api_key)):
+async def context_build(q: str, agent_id: str = "default_user", api_key: str = Depends(get_api_key)):
     """Build system prompt in parallel using Asyncio."""
     try:
         from agent_core.context_builder import ContextBuilder
@@ -157,7 +175,7 @@ async def context_build(q: str, api_key: str = Depends(get_api_key)):
         ctx_builder = ContextBuilder(memory=mem, knowledge=kb)
         
         # Gọi song song để giảm nửa thời gian chờ
-        prompt = await ctx_builder.build_async(q)
+        prompt = await ctx_builder.build_async(q, agent_id=agent_id)
         return {"prompt": prompt}
     except Exception as e:
         print(f"[Error] /context/build: {e}")
