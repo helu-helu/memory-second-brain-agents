@@ -12,6 +12,24 @@ API_BASE = "http://127.0.0.1:8001"
 API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 HEADERS = {"X-API-Key": API_KEY}
 
+def ensure_api_running():
+    import sys
+    import subprocess
+    import time
+    try:
+        resp = requests.get(f"{API_BASE}/ping", timeout=2)
+        if resp.status_code == 200:
+            return
+    except requests.exceptions.RequestException:
+        pass
+    
+    print("[Dashboard] API Server not running. Starting it now...")
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    api_script = os.path.join(project_root, "api", "api_server.py")
+    subprocess.Popen([sys.executable, api_script], cwd=project_root)
+    time.sleep(3)
+
+ensure_api_running()
 st.set_page_config(page_title="Second Brain Dashboard", page_icon=":material/memory:", layout="wide")
 
 st.title(":material/memory: Second Brain Dashboard")
