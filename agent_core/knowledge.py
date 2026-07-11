@@ -20,10 +20,14 @@ def extract_metadata_from_path(file_path: str) -> dict:
     metadata = {}
     
     # 1. Tags from folder path
-    if file_path.startswith(DOCS_DIR):
-        rel_path = os.path.relpath(file_path, DOCS_DIR)
-    elif file_path.startswith(SKILLS_DIR):
-        rel_path = os.path.relpath(file_path, SKILLS_DIR)
+    file_path_norm = os.path.normcase(os.path.abspath(file_path))
+    docs_dir_norm = os.path.normcase(os.path.abspath(DOCS_DIR))
+    skills_dir_norm = os.path.normcase(os.path.abspath(SKILLS_DIR))
+    
+    if file_path_norm.startswith(docs_dir_norm):
+        rel_path = os.path.relpath(file_path, docs_dir_norm)
+    elif file_path_norm.startswith(skills_dir_norm):
+        rel_path = os.path.relpath(file_path, skills_dir_norm)
     else:
         rel_path = os.path.basename(file_path)
         
@@ -72,16 +76,27 @@ class KnowledgeBase:
         """Configure LLM and Embedding models."""
         from llama_index.core import Settings
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-        from llama_index.llms.google_genai import GoogleGenAI
-        api_key = os.getenv("GEMINI_API_KEY")
         
         # 1. Use HuggingFace for offline, unlimited local embeddings (CPU optimized for Ryzen 7)
         Settings.embed_model = HuggingFaceEmbedding(model_name=config["rag"]["embedding_model"])
         
-        # 2. Use Gemini for LLM synthesis (if needed)
-        Settings.llm = GoogleGenAI(
-            model=config["rag"]["llm_model"], api_key=api_key
-        )
+        # 2. Use LLM dynamically based on model_registry
+        llm_model = config.get("model_registry", {}).get("llm_model", "gemini-2.5-flash")
+        llm_model_lower = llm_model.lower()
+        
+        if "gemini" in llm_model_lower:
+            from llama_index.llms.google_genai import GoogleGenAI
+            Settings.llm = GoogleGenAI(model=llm_model, api_key=os.getenv("GEMINI_API_KEY"))
+        elif "gpt" in llm_model_lower:
+            from llama_index.llms.openai import OpenAI
+            Settings.llm = OpenAI(model=llm_model, api_key=os.getenv("OPENAI_API_KEY"))
+        elif "claude" in llm_model_lower:
+            from llama_index.llms.anthropic import Anthropic
+            Settings.llm = Anthropic(model=llm_model, api_key=os.getenv("ANTHROPIC_API_KEY"))
+        else:
+            print(f"[KnowledgeBase] Warning: Unknown LLM {llm_model}. Falling back to Gemini.")
+            from llama_index.llms.google_genai import GoogleGenAI
+            Settings.llm = GoogleGenAI(model="gemini-2.5-flash", api_key=os.getenv("GEMINI_API_KEY"))
 
     def load(self, limit: int = None, input_files: list[str] = None, force_rebuild: bool = False) -> bool:
         """
@@ -216,21 +231,15 @@ class KnowledgeBase:
 
             top_k = top_k or config["rag"]["top_k"]
             
-            # Setup Metadata Filters
-            filter_list = []
+            # Setup Metadata Filters (Tags only)
+            filters = None
             if tags:
-                filter_list.extend([ExactMatchFilter(key="tags", value=tag) for tag in tags])
+                filter_list = [ExactMatchFilter(key="tags", value=tag) for tag in tags]
+                filters = MetadataFilters(filters=filter_list)
                 
-            if requires:
-                if "tier" in requires:
-                    filter_list.append(ExactMatchFilter(key="requires_tier", value=requires["tier"]))
-                if "features" in requires:
-                    for feat in requires["features"]:
-                        filter_list.append(ExactMatchFilter(key="requires_features", value=feat))
-                        
-            filters = MetadataFilters(filters=filter_list) if filter_list else None
-
-            retriever = self._index.as_retriever(similarity_top_k=top_k, filters=filters)
+            # Increase initial retrieval if we are applying capability filters later
+            retriever_k = top_k * 3 if requires else top_k
+            retriever = self._index.as_retriever(similarity_top_k=retriever_k, filters=filters)
             
             # Setup HyDE Query Rewriting
             print(f"[KnowledgeBase] Running HyDE Query Transform for: '{query}'")
@@ -241,8 +250,43 @@ class KnowledgeBase:
             nodes = retriever.retrieve(query_bundle)
             if not nodes:
                 return "(No matching documentation found)"
-            parts = []
+                
+            # Post-retrieval Capability Filtering
+            valid_nodes = []
+            tier_rank = {"nano": 1, "standard": 2, "reasoning": 3, "frontier": 4}
+            
             for node in nodes:
+                req_tier = node.metadata.get("requires_tier")
+                req_features = node.metadata.get("requires_features", [])
+                
+                # General document without requirements
+                if not req_tier and not req_features:
+                    valid_nodes.append(node)
+                    continue
+                    
+                # Capability check
+                if requires:
+                    model_tier = requires.get("tier", "nano")
+                    model_features = set(requires.get("features", []))
+                    
+                    if req_tier and tier_rank.get(model_tier, 0) < tier_rank.get(req_tier, 1):
+                        continue # Model tier is too low
+                        
+                    if req_features:
+                        if isinstance(req_features, str):
+                            req_features = [req_features]
+                        missing_features = set(req_features) - model_features
+                        if missing_features:
+                            continue # Missing features
+                            
+                    valid_nodes.append(node)
+                    
+            valid_nodes = valid_nodes[:top_k]
+            if not valid_nodes:
+                return "(Matching documentation found but filtered out due to model capability constraints)"
+                
+            parts = []
+            for node in valid_nodes:
                 source = node.metadata.get("file_name", "unknown")
                 content = node.get_content()[:1000]
                 parts.append(f"[Source: {source}]\n{content}")

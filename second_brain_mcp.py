@@ -15,6 +15,9 @@ import requests
 import re
 from datetime import datetime
 from mcp.server.fastmcp import FastMCP
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add project root to sys.path to import agent_core
 project_root = os.path.dirname(os.path.abspath(__file__))

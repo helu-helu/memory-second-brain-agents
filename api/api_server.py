@@ -72,23 +72,42 @@ def _trigger_reload():
 
 class DocsChangeHandler(FileSystemEventHandler):
     """Watchdog event handler for docs/ directory"""
+    def __init__(self):
+        super().__init__()
+        self._debounce_timers = {}
+        
+    def _do_insert(self, path):
+        try:
+            kb = get_knowledge()
+            if hasattr(kb, "insert_file"):
+                kb.insert_file(path)
+            else:
+                # Fallback if insert_file is not available
+                global _reload_timer
+                if _reload_timer is not None:
+                    _reload_timer.cancel()
+                _reload_timer = threading.Timer(5.0, _trigger_reload)
+                _reload_timer.start()
+        except Exception as e:
+            print(f"[Watchdog] Error inserting {path}: {e}")
+
     def on_any_event(self, event):
         # Ignore hidden files or directories
         if event.is_directory or os.path.basename(event.src_path).startswith('.'):
             return
+            
+        # Ignore non-text files
+        if not event.src_path.lower().endswith(('.md', '.html', '.txt', '.json', '.pdf')):
+            return
         
-        # Apply Phase 2: Incremental RAG Sync
-        # Instead of reloading everything, we just insert the modified/created file
-        kb = get_knowledge()
-        if hasattr(kb, "insert_file"):
-            kb.insert_file(event.src_path)
-        else:
-            # Fallback if insert_file is not available
-            global _reload_timer
-            if _reload_timer is not None:
-                _reload_timer.cancel()
-            _reload_timer = threading.Timer(5.0, _trigger_reload)
-            _reload_timer.start()
+        # Apply Phase 2: Incremental RAG Sync with Debounce
+        path = event.src_path
+        if path in self._debounce_timers:
+            self._debounce_timers[path].cancel()
+            
+        timer = threading.Timer(2.0, self._do_insert, args=[path])
+        self._debounce_timers[path] = timer
+        timer.start()
 
 def start_watchdog():
     """Starts the directory observer in a background thread"""

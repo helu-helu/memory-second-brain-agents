@@ -58,8 +58,9 @@ class MemoryManager:
         """Search related memories using semantic retrieval with Mem0 v2.0+ filters."""
         try:
             filters = {"user_id": self.user_id}
-            if agent_id:
-                filters["agent_id"] = agent_id
+            # Tạm thời gỡ bỏ cứng agent_id để cho phép Shared Brain (Cross-agent)
+            # if agent_id:
+            #     filters["agent_id"] = agent_id
                 
             results = self._get_client().search(
                 query, limit=limit, filters=filters
@@ -73,8 +74,9 @@ class MemoryManager:
         """Retrieve all stored memories for the user with Mem0 v2.0+ filters."""
         try:
             filters = {"user_id": self.user_id}
-            if agent_id:
-                filters["agent_id"] = agent_id
+            # Tạm thời gỡ bỏ cứng agent_id để cho phép Shared Brain (Cross-agent)
+            # if agent_id:
+            #     filters["agent_id"] = agent_id
                 
             results = self._get_client().get_all(
                 filters=filters
