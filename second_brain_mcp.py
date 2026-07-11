@@ -198,19 +198,23 @@ def open_dashboard() -> str:
         return f"Error opening dashboard (Is API Server running?): {e}"
 
 def ensure_api_running():
-    try:
-        resp = requests.get(f"{API_BASE}/ping", timeout=2)
-        if resp.status_code == 200:
-            return
-    except requests.exceptions.RequestException:
-        pass
-    
+    import socket
+    def is_port_in_use(port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('127.0.0.1', port)) == 0
+            
+    if is_port_in_use(8001):
+        return
+        
     # Not running, start it
     api_script = os.path.join(project_root, "api", "api_server.py")
     # Start process in background
     subprocess.Popen([sys.executable, api_script], cwd=project_root)
     # Wait briefly for it to start
-    time.sleep(3)
+    for _ in range(10):
+        if is_port_in_use(8001):
+            break
+        time.sleep(1)
 
 if __name__ == "__main__":
     ensure_api_running()

@@ -16,18 +16,25 @@ def ensure_api_running():
     import sys
     import subprocess
     import time
-    try:
-        resp = requests.get(f"{API_BASE}/ping", timeout=2)
-        if resp.status_code == 200:
-            return
-    except requests.exceptions.RequestException:
-        pass
+    import socket
     
+    def is_port_in_use(port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('127.0.0.1', port)) == 0
+            
+    if is_port_in_use(8001):
+        # Port is already bound, meaning API server is running or starting up
+        return
+        
     print("[Dashboard] API Server not running. Starting it now...")
     project_root = os.path.dirname(os.path.abspath(__file__))
     api_script = os.path.join(project_root, "api", "api_server.py")
     subprocess.Popen([sys.executable, api_script], cwd=project_root)
-    time.sleep(3)
+    # Wait for the server to actually bind the port
+    for _ in range(10):
+        if is_port_in_use(8001):
+            break
+        time.sleep(1)
 
 ensure_api_running()
 st.set_page_config(page_title="Second Brain Dashboard", page_icon=":material/memory:", layout="wide")
