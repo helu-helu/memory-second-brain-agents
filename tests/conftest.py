@@ -1,6 +1,12 @@
 import os
+import sys
 import pytest
 from unittest.mock import MagicMock
+
+# Ensure the project root is in sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Set test environment variables
 os.environ["APP_API_KEY"] = "test_api_key"

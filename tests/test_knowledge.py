@@ -65,3 +65,47 @@ def test_search_knowledge_empty(mock_qdrant, mocker):
 
     result = kb.search("unknown")
     assert "(No matching documentation found)" in result
+
+def test_capability_routing(mock_qdrant, mocker):
+    """Test that documents are filtered by model capability."""
+    mocker.patch("agent_core.knowledge.KnowledgeBase._setup_settings")
+    mock_hyde_cls = mocker.patch("llama_index.core.indices.query.query_transform.HyDEQueryTransform")
+    mock_bundle = MagicMock()
+    mock_bundle.custom_embedding_strs = ["mock"]
+    mock_hyde_cls.return_value.return_value = mock_bundle
+
+    kb = KnowledgeBase()
+    mock_index = MagicMock()
+    
+    # Node 1: Requires 'reasoning' tier
+    node1 = MagicMock()
+    node1.metadata = {"file_name": "high_tier.md", "requires_tier": "reasoning"}
+    node1.get_content.return_value = "Advanced reasoning doc"
+    
+    # Node 2: Requires 'standard' tier
+    node2 = MagicMock()
+    node2.metadata = {"file_name": "low_tier.md", "requires_tier": "standard"}
+    node2.get_content.return_value = "Basic doc"
+    
+    # Node 3: No requirements
+    node3 = MagicMock()
+    node3.metadata = {"file_name": "general.md"}
+    node3.get_content.return_value = "General doc"
+    
+    mock_index.as_retriever.return_value.retrieve.return_value = [node1, node2, node3]
+    kb._index = mock_index
+    kb._ready = True
+
+    # Test with standard model (Should get node 2 and 3, but drop node 1)
+    requires = {"tier": "standard"}
+    result_std = kb.search("test", requires=requires)
+    assert "high_tier.md" not in result_std
+    assert "low_tier.md" in result_std
+    assert "general.md" in result_std
+    
+    # Test with reasoning model (Should get all 3)
+    requires_high = {"tier": "reasoning"}
+    result_high = kb.search("test", requires=requires_high)
+    assert "high_tier.md" in result_high
+    assert "low_tier.md" in result_high
+    assert "general.md" in result_high

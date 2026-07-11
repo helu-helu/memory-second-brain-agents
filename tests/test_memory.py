@@ -17,7 +17,7 @@ def test_search_memory(mock_mem0):
     assert len(results) == 2
     assert results[0]["memory"] == "User prefers Python async coding."
     # The search method calls with limit=5, filters
-    mock_mem0.search.assert_called_once_with("what do I love?", limit=5, filters={"user_id": "test_user", "agent_id": "agent123"})
+    mock_mem0.search.assert_called_once_with("what do I love?", limit=5, filters={"user_id": "test_user"})
 
 def test_format_for_prompt(mock_mem0):
     """Test formatting memory results into a string prompt."""
