@@ -140,7 +140,6 @@ async def ping():
 
 class MemoryAddRequest(BaseModel):
     text: str
-    agent_id: str = "default_user"
     user_id: str = None
 
 @app.get("/rag/search")
@@ -161,11 +160,11 @@ def rag_search(q: str, tags: list[str] = Query(None), requires_tier: str = None,
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/memory/search")
-def memory_search(q: str, agent_id: str = "default_user", user_id: str = None, api_key: str = Depends(get_api_key)):
+def memory_search(q: str, user_id: str = None, api_key: str = Depends(get_api_key)):
     """Search dynamic long-term memories."""
     try:
         mem = get_memory(user_id)
-        memories = mem.search(q, limit=5, agent_id=agent_id)
+        memories = mem.search(q, limit=5)
         formatted = mem.format_for_prompt(memories)
         return {"result": formatted}
     except Exception as e:
@@ -177,18 +176,18 @@ def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key)):
     """Add a new dynamic memory."""
     try:
         mem = get_memory(req.user_id)
-        success = mem.add(req.text, agent_id=req.agent_id)
+        success = mem.add(req.text)
         return {"success": success}
     except Exception as e:
         print(f"[Error] /memory/add: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/memory/all")
-def memory_all(agent_id: str = "default_user", user_id: str = None, api_key: str = Depends(get_api_key)):
-    """Get all dynamic memories for an agent."""
+def memory_all(user_id: str = None, api_key: str = Depends(get_api_key)):
+    """Get all dynamic memories for a user."""
     try:
         mem = get_memory(user_id)
-        memories = mem.get_all(agent_id=agent_id)
+        memories = mem.get_all()
         return {"memories": memories}
     except Exception as e:
         print(f"[Error] /memory/all: {e}")

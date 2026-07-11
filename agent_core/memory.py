@@ -36,7 +36,7 @@ class MemoryManager:
             self._client = Memory.from_config(MEM0_CONFIG)
         return self._client
 
-    def add(self, text: str, agent_id: Optional[str] = None,
+    def add(self, text: str,
             metadata: Optional[dict] = None) -> bool:
         """
         Record new facts/dialogue history. Mem0 automatically extracts facts.
@@ -45,7 +45,6 @@ class MemoryManager:
             self._get_client().add(
                 text,
                 user_id=self.user_id,
-                agent_id=agent_id,
                 metadata=metadata or {}
             )
             return True
@@ -53,35 +52,28 @@ class MemoryManager:
             print(f"[MemoryManager.add] Error: {e}")
             return False
 
-    def search(self, query: str, limit: int = 5,
-               agent_id: Optional[str] = None) -> list[dict]:
+    def search(self, query: str, limit: int = 5) -> list[dict]:
         """Search related memories using semantic retrieval with Mem0 v2.0+ filters."""
         try:
             filters = {"user_id": self.user_id}
-            # Tạm thời gỡ bỏ cứng agent_id để cho phép Shared Brain (Cross-agent)
-            # if agent_id:
-            #     filters["agent_id"] = agent_id
-                
+            
             results = self._get_client().search(
-                query, limit=limit, filters=filters
+                query=query,
+                limit=limit,
+                filters=filters
             )
-            return results if isinstance(results, list) else results.get("results", [])
+            return results
         except Exception as e:
             print(f"[MemoryManager.search] Error: {e}")
             return []
 
-    def get_all(self, agent_id: Optional[str] = None) -> list[dict]:
-        """Retrieve all stored memories for the user with Mem0 v2.0+ filters."""
+    def get_all(self) -> list[dict]:
+        """Retrieve all facts across the user."""
         try:
             filters = {"user_id": self.user_id}
-            # Tạm thời gỡ bỏ cứng agent_id để cho phép Shared Brain (Cross-agent)
-            # if agent_id:
-            #     filters["agent_id"] = agent_id
-                
-            results = self._get_client().get_all(
-                filters=filters
-            )
-            return results if isinstance(results, list) else results.get("results", [])
+            
+            results = self._get_client().get_all(filters=filters)
+            return results
         except Exception as e:
             print(f"[MemoryManager.get_all] Error: {e}")
             return []

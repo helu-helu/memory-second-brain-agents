@@ -27,7 +27,7 @@ if project_root not in sys.path:
 from agent_core.config import config
 
 API_BASE = config["app"]["api_server"]["base_url"]
-API_KEY = os.environ["APP_API_KEY"]
+API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 HEADERS = {config["app"]["api_key_name"]: API_KEY}
 
 api_session = requests.Session()
