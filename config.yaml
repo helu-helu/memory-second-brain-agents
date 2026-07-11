@@ -37,7 +37,7 @@ memory:
   version: "v1.1"
   history_db_path: "./db/mem0_history.db"
   qdrant:
-    path: "./db/qdrant_local"
+    path: "./db/qdrant_mem0"
     collection_name: "personal_agent_memory"
     embedding_model_dims: 384
   llm:
