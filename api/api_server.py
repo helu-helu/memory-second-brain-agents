@@ -31,7 +31,7 @@ from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
 from agent_core.config import config, DOCS_DIR, SKILLS_DIR, MODEL_REGISTRY
 
-API_KEY = os.environ["APP_API_KEY"]
+API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 API_KEY_NAME = config["app"]["api_key_name"]
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
