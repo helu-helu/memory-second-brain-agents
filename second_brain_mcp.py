@@ -54,6 +54,8 @@ def search_knowledge(query: str, tags: list[str] = None) -> str:
     except Exception as e:
         return f"Error searching RAG knowledge (Is API Server running?): {e}"
 
+USER_ID = os.environ.get("MEM0_USER_ID")
+
 @mcp.tool()
 def search_memory(query: str) -> str:
     """
@@ -61,7 +63,10 @@ def search_memory(query: str) -> str:
     Use this tool to find user's coding styles, preferred tools, database ports, or past project decisions.
     """
     try:
-        resp = api_session.get(f"{API_BASE}/memory/search", params={"q": query})
+        params = {"q": query}
+        if USER_ID:
+            params["user_id"] = USER_ID
+        resp = api_session.get(f"{API_BASE}/memory/search", params=params)
         if resp.status_code == 200:
             return resp.json().get("result", "No memories found")
         return f"API Error: {resp.status_code} - {resp.text}"
@@ -75,7 +80,10 @@ def add_memory(text: str) -> str:
     Use this tool when the user shares a personal style, choice, port, or coding rule.
     """
     try:
-        resp = api_session.post(f"{API_BASE}/memory/add", json={"text": text})
+        payload = {"text": text}
+        if USER_ID:
+            payload["user_id"] = USER_ID
+        resp = api_session.post(f"{API_BASE}/memory/add", json=payload)
         if resp.status_code == 200:
             success = resp.json().get("success", False)
             if success:

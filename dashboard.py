@@ -77,7 +77,11 @@ with tab1:
 with tab2:
     st.header("Quản trị Ký Ức (Multi-Agent)")
     
-    agent_id = st.text_input("Agent ID", value="default_user", help="Nhập ID của Agent để xem các ký ức riêng biệt.")
+    col_id1, col_id2 = st.columns([1, 1])
+    with col_id1:
+        user_id = st.text_input("User ID (Chủ nhân)", value=os.environ.get("MEM0_USER_ID", "personal_user"), help="Nhập ID của người dùng (VD: HELU)")
+    with col_id2:
+        agent_id = st.text_input("Agent ID", value="default_user", help="Nhập ID của Agent để xem các ký ức riêng biệt.")
     
     col1, col2 = st.columns([1, 1])
     
@@ -89,7 +93,7 @@ with tab2:
                 if search_mem:
                     with st.spinner("Đang tìm..."):
                         try:
-                            res = requests.get(f"{API_BASE}/memory/search", params={"q": search_mem, "agent_id": agent_id}, headers=HEADERS)
+                            res = requests.get(f"{API_BASE}/memory/search", params={"q": search_mem, "agent_id": agent_id, "user_id": user_id}, headers=HEADERS)
                             if res.status_code == 200:
                                 st.markdown("**Kết quả:**")
                                 st.info(res.json().get("result", ""))
@@ -105,7 +109,7 @@ with tab2:
                 if new_memory:
                     with st.spinner("Đang thêm..."):
                         try:
-                            res = requests.post(f"{API_BASE}/memory/add", json={"text": new_memory, "agent_id": agent_id}, headers=HEADERS)
+                            res = requests.post(f"{API_BASE}/memory/add", json={"text": new_memory, "agent_id": agent_id, "user_id": user_id}, headers=HEADERS)
                             if res.status_code == 200:
                                 st.success("Đã thêm thành công!")
                             else:
@@ -122,7 +126,7 @@ with tab2:
                 pass # Sẽ tự động gọi lại code dưới
             
             try:
-                res = requests.get(f"{API_BASE}/memory/all", params={"agent_id": agent_id}, headers=HEADERS)
+                res = requests.get(f"{API_BASE}/memory/all", params={"agent_id": agent_id, "user_id": user_id}, headers=HEADERS)
                 if res.status_code == 200:
                     memories = res.json().get("memories", [])
                     if not memories:
