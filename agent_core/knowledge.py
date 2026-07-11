@@ -7,19 +7,51 @@ Stores vector database locally in ./db/qdrant_rag, loads existing index if avail
 """
 
 import os
+import yaml
 from dotenv import load_dotenv
 
-from agent_core.config import config, DOCS_DIR, QDRANT_PATH, COLLECTION_NAME, ROOT_DIR
+from agent_core.config import config, DOCS_DIR, SKILLS_DIR, QDRANT_PATH, COLLECTION_NAME, ROOT_DIR
 
 load_dotenv()
 
 
 def extract_metadata_from_path(file_path: str) -> dict:
-    """Extract folder names inside DOCS_DIR as tags."""
-    rel_path = os.path.relpath(file_path, DOCS_DIR)
-    parts = os.path.normpath(rel_path).split(os.sep)[:-1]  # Exclude filename
+    """Extract folder names as tags, and parse YAML frontmatter for 'requires' capability."""
+    metadata = {}
+    
+    # 1. Tags from folder path
+    if file_path.startswith(DOCS_DIR):
+        rel_path = os.path.relpath(file_path, DOCS_DIR)
+    elif file_path.startswith(SKILLS_DIR):
+        rel_path = os.path.relpath(file_path, SKILLS_DIR)
+    else:
+        rel_path = os.path.basename(file_path)
+        
+    parts = os.path.normpath(rel_path).split(os.sep)[:-1]
     tags = [p for p in parts if p != "." and p != ".."]
-    return {"tags": tags}
+    metadata["tags"] = tags
+    
+    # 2. Parse YAML Frontmatter for Capability routing
+    if file_path.endswith('.md'):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                if content.startswith('---'):
+                    end_idx = content.find('---', 3)
+                    if end_idx != -1:
+                        frontmatter = content[3:end_idx]
+                        data = yaml.safe_load(frontmatter)
+                        if data and "requires" in data:
+                            reqs = data["requires"]
+                            if isinstance(reqs, dict):
+                                if "tier" in reqs:
+                                    metadata["requires_tier"] = reqs["tier"]
+                                if "features" in reqs and isinstance(reqs["features"], list):
+                                    metadata["requires_features"] = reqs["features"]
+        except Exception:
+            pass
+            
+    return metadata
 
 
 class KnowledgeBase:
@@ -92,25 +124,26 @@ class KnowledgeBase:
                 # Count valid document files
                 valid_exts = {".md", ".html", ".json", ".txt"}
                 doc_files = []
-                for root, _, files in os.walk(DOCS_DIR):
-                    for f in files:
-                        if os.path.splitext(f)[1].lower() in valid_exts:
-                            doc_files.append(os.path.join(root, f))
+                for search_dir in [DOCS_DIR, SKILLS_DIR]:
+                    if os.path.exists(search_dir):
+                        for root, _, files in os.walk(search_dir):
+                            for f in files:
+                                if os.path.splitext(f)[1].lower() in valid_exts:
+                                    doc_files.append(os.path.join(root, f))
                 if not doc_files:
-                    print(f"[KnowledgeBase] [WARN] Directory {DOCS_DIR} has no valid files.")
+                    print(f"[KnowledgeBase] [WARN] No valid files found in {DOCS_DIR} or {SKILLS_DIR}.")
                     self._ready = False
                     return False
 
                 # Apply limit if specified
                 if limit:
                     print(f"[KnowledgeBase] Indexing limited to first {limit} files (total files: {len(doc_files)})...")
+                    doc_files = doc_files[:limit]
                 else:
                     print(f"[KnowledgeBase] Indexing all {len(doc_files)} files...")
 
                 reader = SimpleDirectoryReader(
-                    input_dir=DOCS_DIR, recursive=True,
-                    required_exts=list(valid_exts),
-                    num_files_limit=limit,
+                    input_files=doc_files,
                     file_metadata=extract_metadata_from_path
                 )
 
@@ -170,10 +203,10 @@ class KnowledgeBase:
             print(f"[KnowledgeBase] [Incremental Sync] Failed for {file_path}: {e}")
             return False
 
-    def search(self, query: str, top_k: int = None, tags: list[str] = None) -> str:
+    def search(self, query: str, top_k: int = None, tags: list[str] = None, requires: dict = None) -> str:
         """
         Search and retrieve raw text snippets.
-        Uses HyDE Query Transform for accuracy and supports metadata tag filtering.
+        Uses HyDE Query Transform for accuracy and supports metadata tag & capability filtering.
         """
         if not self._ready or self._index is None:
             return "(KnowledgeBase not loaded. Please call kb.load() first)"
@@ -184,10 +217,18 @@ class KnowledgeBase:
             top_k = top_k or config["rag"]["top_k"]
             
             # Setup Metadata Filters
-            filters = None
+            filter_list = []
             if tags:
-                filter_list = [ExactMatchFilter(key="tags", value=tag) for tag in tags]
-                filters = MetadataFilters(filters=filter_list)
+                filter_list.extend([ExactMatchFilter(key="tags", value=tag) for tag in tags])
+                
+            if requires:
+                if "tier" in requires:
+                    filter_list.append(ExactMatchFilter(key="requires_tier", value=requires["tier"]))
+                if "features" in requires:
+                    for feat in requires["features"]:
+                        filter_list.append(ExactMatchFilter(key="requires_features", value=feat))
+                        
+            filters = MetadataFilters(filters=filter_list) if filter_list else None
 
             retriever = self._index.as_retriever(similarity_top_k=top_k, filters=filters)
             

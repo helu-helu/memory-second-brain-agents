@@ -83,15 +83,17 @@ def add_memory(text: str) -> str:
         return f"Error adding memory (Is API Server running?): {e}"
 
 @mcp.tool()
-def save_verified_workflow(title: str, content: str, success_rate: str = "100%", task_id: str = "N/A") -> str:
+def save_verified_workflow(title: str, content: str, requires_tier: str = "standard", requires_features: str = "tool_calling", success_rate: str = "100%", task_id: str = "N/A") -> str:
     """
     Lưu trữ một Workflow hoặc Kinh nghiệm đã được xác minh (Verified) sau khi Agent/Người dùng hoàn thành một task khó.
-    Tạo file Markdown tại thư mục docs/Workflows/ với YAML Frontmatter chứa metadata.
+    Tạo file Markdown tại thư mục docs/Workflows/ với YAML Frontmatter chứa metadata Capability (requires).
     Auto-sync watchdog sẽ tự động đưa file này vào Qdrant RAG.
     
     Args:
         title: Tiêu đề ngắn gọn (ví dụ: "setup_fastapi_docker", "fix_cors_error")
         content: Nội dung chi tiết của workflow, các bước giải quyết, code mẫu
+        requires_tier: Cấp độ model yêu cầu (nano, standard, reasoning, frontier)
+        requires_features: Các tính năng yêu cầu cách nhau bằng dấu phẩy (vd: "tool_calling,structured_output")
         success_rate: Tỷ lệ thành công hoặc điểm tin cậy (mặc định "100%")
         task_id: ID của task hoặc mô tả ngắn gọn về context
     """
@@ -103,6 +105,12 @@ def save_verified_workflow(title: str, content: str, success_rate: str = "100%",
         filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', title).lower() + ".md"
         filepath = os.path.join(workflows_dir, filename)
         
+        # Parse features
+        features_list = [f.strip() for f in requires_features.split(",")]
+        features_yaml = "\n  - ".join(features_list)
+        if features_yaml:
+            features_yaml = f"\n  - {features_yaml}"
+            
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         markdown_content = f"""---
@@ -112,6 +120,9 @@ date: "{date_str}"
 success_rate: "{success_rate}"
 task_id: "{task_id}"
 tags: ["Workflows"]
+requires:
+  tier: "{requires_tier}"
+  features:{features_yaml}
 ---
 
 # {title}
@@ -173,6 +184,38 @@ def search_workflows(query: str) -> str:
         return f"API Error: {resp.status_code} - {resp.text}"
     except Exception as e:
         return f"Error searching workflows (Is API Server running?): {e}"
+
+@mcp.tool()
+def convert_docs_to_md(source_dir: str) -> str:
+    """
+    Tự động parse thư mục chứa tài liệu HTML/Web (ví dụ: offline documentation) thành Markdown sạch để nạp vào RAG.
+    
+    Args:
+        source_dir: Đường dẫn tuyệt đối đến thư mục chứa tài liệu gốc (vd: "D:/UnityDocs")
+    """
+    try:
+        script_path = os.path.join(project_root, "scripts", "convert_html_to_md.py")
+        target_dir = os.path.join(project_root, "docs", "daily")
+        result = subprocess.run([sys.executable, script_path, source_dir, target_dir], capture_output=True, text=True)
+        return result.stdout if result.returncode == 0 else f"Conversion Failed:\n{result.stderr}"
+    except Exception as e:
+        return f"Error running convert_html_to_md.py: {e}"
+
+@mcp.tool()
+def build_massive_index(target_dir: str) -> str:
+    """
+    Kích hoạt Advanced Semantic Chunking và Local Embedding để ép hàng ngàn file vào Qdrant RAG mà không bị OOM (Hết RAM).
+    Nên gọi tool này sau khi đã convert tài liệu sang định dạng Markdown.
+    
+    Args:
+        target_dir: Đường dẫn tuyệt đối đến thư mục chứa Markdown (thường là "<project_root>/docs/daily" hoặc source_dir)
+    """
+    try:
+        script_path = os.path.join(project_root, "scripts", "build_massive_index.py")
+        result = subprocess.run([sys.executable, script_path, target_dir], capture_output=True, text=True)
+        return result.stdout if result.returncode == 0 else f"Indexing Failed:\n{result.stderr}"
+    except Exception as e:
+        return f"Error running build_massive_index.py: {e}"
 
 def ensure_api_running():
     try:

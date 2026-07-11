@@ -9,9 +9,27 @@ rag:
   docs_dir: "./docs"
   watch_dir: "./docs/daily"
   workflows_dir: "./docs/Workflows"
+  skills_dir: "./.agents/skills"
   db_path: "./db/qdrant_rag"
   collection_name: "personal_knowledge_base"
   embedding_model: "BAAI/bge-small-en-v1.5"
+
+model_registry:
+  available_models:
+    - id: "gemini-2.5-flash"
+      tier: "standard"
+      features: ["tool_calling", "structured_output"]
+    - id: "gemini-2.5-pro"
+      tier: "reasoning"
+      features: ["tool_calling", "structured_output", "complex_planning"]
+    - id: "claude-3-5-sonnet"
+      tier: "reasoning"
+      features: ["tool_calling", "structured_output", "complex_planning"]
+    - id: "llama-3-8b"
+      tier: "nano"
+      features: ["tool_calling"]
+  routing:
+    default_strategy: "best_quality"
   llm_model: "gemini-2.5-flash"
   top_k: 3
 

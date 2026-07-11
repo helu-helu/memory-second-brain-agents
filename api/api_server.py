@@ -29,7 +29,7 @@ if project_root not in sys.path:
 
 from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
-from agent_core.config import config, DOCS_DIR
+from agent_core.config import config, DOCS_DIR, SKILLS_DIR, MODEL_REGISTRY
 
 API_KEY = os.environ["APP_API_KEY"]
 API_KEY_NAME = config["app"]["api_key_name"]
@@ -93,11 +93,13 @@ class DocsChangeHandler(FileSystemEventHandler):
 def start_watchdog():
     """Starts the directory observer in a background thread"""
     observer = Observer()
-    docs_dir = DOCS_DIR
-    os.makedirs(docs_dir, exist_ok=True)
-    observer.schedule(DocsChangeHandler(), docs_dir, recursive=True)
-    observer.start()
-    print(f"[Watchdog] Started monitoring {docs_dir} for Auto-Sync.")
+    handler = DocsChangeHandler()
+    
+    for watch_dir in [DOCS_DIR, SKILLS_DIR]:
+        os.makedirs(watch_dir, exist_ok=True)
+        observer.schedule(handler, watch_dir, recursive=True)
+        print(f"[Watchdog] Started monitoring {watch_dir} for Auto-Sync.")
+        
     try:
         while True:
             time.sleep(1)
@@ -121,11 +123,17 @@ class MemoryAddRequest(BaseModel):
     agent_id: str = "default_user"
 
 @app.get("/rag/search")
-def rag_search(q: str, tags: list[str] = Query(None), api_key: str = Depends(get_api_key)):
+def rag_search(q: str, tags: list[str] = Query(None), requires_tier: str = None, requires_features: list[str] = Query(None), api_key: str = Depends(get_api_key)):
     """Search static RAG documents."""
     try:
         kb = get_knowledge()
-        result = kb.search(q, top_k=3, tags=tags)
+        requires = {}
+        if requires_tier:
+            requires["tier"] = requires_tier
+        if requires_features:
+            requires["features"] = requires_features
+            
+        result = kb.search(q, top_k=3, tags=tags, requires=requires if requires else None)
         return {"result": result}
     except Exception as e:
         print(f"[Error] /rag/search: {e}")
@@ -166,7 +174,7 @@ def memory_all(agent_id: str = "default_user", api_key: str = Depends(get_api_ke
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/context/build")
-async def context_build(q: str, agent_id: str = "default_user", api_key: str = Depends(get_api_key)):
+async def context_build(q: str, agent_id: str = "default_user", model_id: str = None, api_key: str = Depends(get_api_key)):
     """Build system prompt in parallel using Asyncio."""
     try:
         from agent_core.context_builder import ContextBuilder
@@ -174,8 +182,20 @@ async def context_build(q: str, agent_id: str = "default_user", api_key: str = D
         kb = get_knowledge()
         ctx_builder = ContextBuilder(memory=mem, knowledge=kb)
         
+        # Capability-Based Routing mapping
+        requires = None
+        if model_id and "available_models" in MODEL_REGISTRY:
+            for model_info in MODEL_REGISTRY["available_models"]:
+                if model_info.get("id") == model_id:
+                    requires = {
+                        "tier": model_info.get("tier"),
+                        "features": model_info.get("features", [])
+                    }
+                    print(f"[Router] Mapped model {model_id} to capabilities: {requires}")
+                    break
+        
         # Gọi song song để giảm nửa thời gian chờ
-        prompt = await ctx_builder.build_async(q, agent_id=agent_id)
+        prompt = await ctx_builder.build_async(q, agent_id=agent_id, requires=requires)
         return {"prompt": prompt}
     except Exception as e:
         print(f"[Error] /context/build: {e}")

@@ -93,6 +93,20 @@ class MemoryManager:
             print(f"[MemoryManager.delete_all] Error: {e}")
             return False
 
+    def add_execution_log(self, task_id: str, skill: str, success_rate: str) -> bool:
+        """
+        Record the execution result of a specific skill for capability tracking.
+        (Layer 3 of Capability-Based Architecture)
+        """
+        log_text = f"Execution Log - Task: {task_id} | Skill: {skill} | Result: {success_rate}"
+        metadata = {
+            "type": "execution_log",
+            "task_id": task_id,
+            "skill": skill,
+            "success_rate": success_rate
+        }
+        return self.add(log_text, agent_id="evals_system", metadata=metadata)
+
     def format_for_prompt(self, memories: list[dict]) -> str:
         """Format list of memories into a bulleted string for the System Prompt."""
         if not memories:

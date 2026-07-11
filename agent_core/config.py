@@ -14,8 +14,12 @@ with open(CONFIG_PATH, "r", encoding="utf-8") as f:
 
 # Export các biến dùng chung cho RAG (KnowledgeBase)
 DOCS_DIR = os.path.join(ROOT_DIR, config["rag"]["docs_dir"].replace("./", ""))
+SKILLS_DIR = os.path.join(ROOT_DIR, config["rag"]["skills_dir"].replace("./", ""))
 QDRANT_PATH = os.path.join(ROOT_DIR, config["rag"]["db_path"].replace("./", ""))
 COLLECTION_NAME = config["rag"]["collection_name"]
+
+# Export Model Registry config
+MODEL_REGISTRY = config.get("model_registry", {})
 
 # Export cấu hình cho Mem0 (MemoryManager)
 MEM0_CONFIG = {
