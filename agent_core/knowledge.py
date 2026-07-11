@@ -223,13 +223,14 @@ class KnowledgeBase:
         Search and retrieve raw text snippets.
         Uses HyDE Query Transform for accuracy and supports metadata tag & capability filtering.
         """
-        if not self._ready or self._index is None:
-            return "(KnowledgeBase not loaded. Please call kb.load() first)"
         try:
             from llama_index.core.indices.query.query_transform import HyDEQueryTransform
             from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 
-            top_k = top_k or config["rag"]["top_k"]
+            if not self._ready:
+                return "(Knowledge Base is not loaded)"
+
+            top_k = top_k or config.get("rag", {}).get("top_k", 3)
             
             # Setup Metadata Filters (Tags only)
             filters = None

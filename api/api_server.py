@@ -220,6 +220,119 @@ async def context_build(q: str, agent_id: str = "default_user", model_id: str = 
         print(f"[Error] /context/build: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+# --- Admin & MCP Tools Endpoints ---
+import subprocess
+import re
+from datetime import datetime
+
+class WorkflowRequest(BaseModel):
+    title: str
+    content: str
+    requires_tier: str = "standard"
+    requires_features: str = "tool_calling"
+    success_rate: str = "100%"
+    task_id: str = "N/A"
+
+@app.post("/admin/save_workflow")
+def admin_save_workflow(req: WorkflowRequest, api_key: str = Depends(get_api_key)):
+    try:
+        workflows_dir = os.path.join(project_root, "docs", "Workflows")
+        os.makedirs(workflows_dir, exist_ok=True)
+        filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', req.title).lower() + ".md"
+        filepath = os.path.join(workflows_dir, filename)
+        features_list = [f.strip() for f in req.requires_features.split(",")]
+        features_yaml = "\n  - ".join(features_list)
+        if features_yaml:
+            features_yaml = f"\n  - {features_yaml}"
+        date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        markdown_content = f"""---
+title: "{req.title}"
+status: "Verified"
+date: "{date_str}"
+success_rate: "{req.success_rate}"
+task_id: "{req.task_id}"
+tags: ["Workflows"]
+requires:
+  tier: "{req.requires_tier}"
+  features:{features_yaml}
+---
+
+# {req.title}
+
+{req.content}
+"""
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+        return {"success": True, "message": f"Saved to {filepath}"}
+    except Exception as e:
+        print(f"[Error] /admin/save_workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class DeprecateRequest(BaseModel):
+    filename: str
+    reason: str
+
+@app.post("/admin/deprecate_workflow")
+def admin_deprecate_workflow(req: DeprecateRequest, api_key: str = Depends(get_api_key)):
+    try:
+        workflows_dir = os.path.join(project_root, "docs", "Workflows")
+        filepath = os.path.join(workflows_dir, req.filename)
+        if not os.path.exists(filepath):
+            raise HTTPException(status_code=404, detail="File not found")
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        if 'status: "Verified"' in content:
+            content = content.replace('status: "Verified"', f'status: "Deprecated"\ndeprecation_reason: "{req.reason}"')
+        else:
+            raise HTTPException(status_code=400, detail="Not a verified workflow")
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+        return {"success": True, "message": f"Deprecated {req.filename}"}
+    except Exception as e:
+        print(f"[Error] /admin/deprecate_workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ConvertDocsRequest(BaseModel):
+    source_dir: str
+
+@app.post("/admin/convert_docs")
+def admin_convert_docs(req: ConvertDocsRequest, api_key: str = Depends(get_api_key)):
+    try:
+        script_path = os.path.join(project_root, "scripts", "convert_html_to_md.py")
+        target_dir = os.path.join(project_root, "docs", "daily")
+        result = subprocess.run([sys.executable, script_path, req.source_dir, target_dir], capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(result.stderr)
+        return {"success": True, "output": result.stdout}
+    except Exception as e:
+        print(f"[Error] /admin/convert_docs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class BuildIndexRequest(BaseModel):
+    target_dir: str
+
+@app.post("/admin/build_index")
+def admin_build_index(req: BuildIndexRequest, api_key: str = Depends(get_api_key)):
+    try:
+        script_path = os.path.join(project_root, "scripts", "build_massive_index.py")
+        result = subprocess.run([sys.executable, script_path, req.target_dir], capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(result.stderr)
+        return {"success": True, "output": result.stdout}
+    except Exception as e:
+        print(f"[Error] /admin/build_index: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/admin/open_dashboard")
+def admin_open_dashboard(api_key: str = Depends(get_api_key)):
+    try:
+        dash_path = os.path.join(project_root, "dashboard.py")
+        subprocess.Popen(["streamlit", "run", dash_path], cwd=project_root)
+        return {"success": True, "message": "Dashboard opened"}
+    except Exception as e:
+        print(f"[Error] /admin/open_dashboard: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api_server:app", host=config["app"]["api_server"]["host"], port=config["app"]["api_server"]["port"], reload=False)

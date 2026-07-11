@@ -101,43 +101,20 @@ def save_verified_workflow(title: str, content: str, requires_tier: str = "stand
         task_id: ID của task hoặc mô tả ngắn gọn về context
     """
     try:
-        workflows_dir = os.path.join(project_root, "docs", "Workflows")
-        os.makedirs(workflows_dir, exist_ok=True)
-        
-        # Sanitize title for filename
-        filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', title).lower() + ".md"
-        filepath = os.path.join(workflows_dir, filename)
-        
-        # Parse features
-        features_list = [f.strip() for f in requires_features.split(",")]
-        features_yaml = "\n  - ".join(features_list)
-        if features_yaml:
-            features_yaml = f"\n  - {features_yaml}"
-            
-        date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        markdown_content = f"""---
-title: "{title}"
-status: "Verified"
-date: "{date_str}"
-success_rate: "{success_rate}"
-task_id: "{task_id}"
-tags: ["Workflows"]
-requires:
-  tier: "{requires_tier}"
-  features:{features_yaml}
----
-
-# {title}
-
-{content}
-"""
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(markdown_content)
-            
-        return f"Successfully saved verified workflow to {filepath}. Auto-sync will index it shortly."
+        payload = {
+            "title": title,
+            "content": content,
+            "requires_tier": requires_tier,
+            "requires_features": requires_features,
+            "success_rate": success_rate,
+            "task_id": task_id
+        }
+        resp = api_session.post(f"{API_BASE}/admin/save_workflow", json=payload)
+        if resp.status_code == 200:
+            return resp.json().get("message", "Success")
+        return f"API Error: {resp.status_code} - {resp.text}"
     except Exception as e:
-        return f"Error saving workflow: {e}"
+        return f"Error saving workflow (Is API Server running?): {e}"
 
 @mcp.tool()
 def deprecate_workflow(filename: str, reason: str) -> str:
@@ -150,27 +127,12 @@ def deprecate_workflow(filename: str, reason: str) -> str:
         reason: Lý do tại sao bị lỗi thời
     """
     try:
-        workflows_dir = os.path.join(project_root, "docs", "Workflows")
-        filepath = os.path.join(workflows_dir, filename)
-        
-        if not os.path.exists(filepath):
-            return f"Error: Workflow file {filename} not found in {workflows_dir}"
-            
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-            
-        # Thay thế status
-        if 'status: "Verified"' in content:
-            content = content.replace('status: "Verified"', f'status: "Deprecated"\ndeprecation_reason: "{reason}"')
-        else:
-            return "Could not find 'status: \"Verified\"' in the file."
-            
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-            
-        return f"Successfully deprecated workflow {filename}. RAG will ignore it next sync."
+        resp = api_session.post(f"{API_BASE}/admin/deprecate_workflow", json={"filename": filename, "reason": reason})
+        if resp.status_code == 200:
+            return resp.json().get("message", "Success")
+        return f"API Error: {resp.status_code} - {resp.text}"
     except Exception as e:
-        return f"Error deprecating workflow: {e}"
+        return f"Error deprecating workflow (Is API Server running?): {e}"
 
 @mcp.tool()
 def search_workflows(query: str) -> str:
@@ -197,12 +159,12 @@ def convert_docs_to_md(source_dir: str) -> str:
         source_dir: Đường dẫn tuyệt đối đến thư mục chứa tài liệu gốc (vd: "D:/UnityDocs")
     """
     try:
-        script_path = os.path.join(project_root, "scripts", "convert_html_to_md.py")
-        target_dir = os.path.join(project_root, "docs", "daily")
-        result = subprocess.run([sys.executable, script_path, source_dir, target_dir], capture_output=True, text=True)
-        return result.stdout if result.returncode == 0 else f"Conversion Failed:\n{result.stderr}"
+        resp = api_session.post(f"{API_BASE}/admin/convert_docs", json={"source_dir": source_dir})
+        if resp.status_code == 200:
+            return resp.json().get("output", "Success")
+        return f"Conversion Failed: {resp.status_code} - {resp.text}"
     except Exception as e:
-        return f"Error running convert_html_to_md.py: {e}"
+        return f"Error running convert_docs (Is API Server running?): {e}"
 
 @mcp.tool()
 def build_massive_index(target_dir: str) -> str:
@@ -214,11 +176,26 @@ def build_massive_index(target_dir: str) -> str:
         target_dir: Đường dẫn tuyệt đối đến thư mục chứa Markdown (thường là "<project_root>/docs/daily" hoặc source_dir)
     """
     try:
-        script_path = os.path.join(project_root, "scripts", "build_massive_index.py")
-        result = subprocess.run([sys.executable, script_path, target_dir], capture_output=True, text=True)
-        return result.stdout if result.returncode == 0 else f"Indexing Failed:\n{result.stderr}"
+        resp = api_session.post(f"{API_BASE}/admin/build_index", json={"target_dir": target_dir})
+        if resp.status_code == 200:
+            return resp.json().get("output", "Success")
+        return f"Indexing Failed: {resp.status_code} - {resp.text}"
     except Exception as e:
-        return f"Error running build_massive_index.py: {e}"
+        return f"Error running build_index (Is API Server running?): {e}"
+
+@mcp.tool()
+def open_dashboard() -> str:
+    """
+    Mở giao diện Web Dashboard của Second Brain để người dùng tương tác trực quan.
+    Hãy gọi tool này khi người dùng yêu cầu "mở dashboard", "xem giao diện", hoặc muốn trực quan hóa dữ liệu RAG/Memory.
+    """
+    try:
+        resp = api_session.post(f"{API_BASE}/admin/open_dashboard")
+        if resp.status_code == 200:
+            return "Dashboard is launching. Please tell the user to check their browser or taskbar."
+        return f"Failed to open Dashboard: {resp.text}"
+    except Exception as e:
+        return f"Error opening dashboard (Is API Server running?): {e}"
 
 def ensure_api_running():
     try:

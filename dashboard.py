@@ -17,23 +17,29 @@ st.set_page_config(page_title="Second Brain Dashboard", page_icon=":material/mem
 st.title(":material/memory: Second Brain Dashboard")
 st.markdown("Quản trị dữ liệu RAG và Ký ức đa tác vụ (Multi-Agent Memory) của hệ thống.")
 
-tab1, tab2 = st.tabs(["🧩 RAG (Knowledge Base)", "🧠 Memory (Mem0)"])
+tab1, tab2, tab3 = st.tabs(["🧩 RAG (Knowledge Base)", "🧠 Memory (Mem0)", "⚙️ Admin Tools"])
 
 with tab1:
     st.header("Truy vấn Kho Tri Thức (RAG)")
     
     with st.container(border=True):
-        col1, col2 = st.columns([3, 1])
+        col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
             rag_query = st.text_input("Nhập câu hỏi để tìm kiếm trong RAG...", placeholder="Ví dụ: Làm sao để cài đặt cơ sở dữ liệu?")
         with col2:
+            req_tier = st.selectbox("Capability Tier:", ["(Không lọc)", "nano", "standard", "reasoning", "frontier"])
+        with col3:
             st.markdown("<br>", unsafe_allow_html=True)
             search_rag_btn = st.button(":material/search: Tìm kiếm RAG")
             
         if search_rag_btn and rag_query:
             with st.spinner("Đang tìm kiếm..."):
                 try:
-                    res = requests.get(f"{API_BASE}/rag/search", params={"q": rag_query}, headers=HEADERS)
+                    params = {"q": rag_query}
+                    if req_tier != "(Không lọc)":
+                        params["requires_tier"] = req_tier
+                        
+                    res = requests.get(f"{API_BASE}/rag/search", params=params, headers=HEADERS)
                     if res.status_code == 200:
                         data = res.json().get("result", "")
                         st.markdown("**Kết quả:**")
@@ -104,3 +110,40 @@ with tab2:
                     st.error("Lỗi khi tải danh sách ký ức.")
             except Exception as e:
                 st.error("Không thể kết nối đến API Server.")
+
+with tab3:
+    st.header("Công Cụ Quản Trị Hệ Thống (Admin & Ingestion)")
+    st.markdown("Chạy các lệnh bảo trì dữ liệu thay vì dùng Terminal.")
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        with st.container(border=True):
+            st.subheader("1. Convert HTML -> Markdown")
+            source_dir = st.text_input("Thư mục chứa HTML gốc:", value=os.path.join(os.getcwd(), "docs", "raw_html"))
+            if st.button(":material/html: Chạy Convert"):
+                with st.spinner("Đang xử lý thư mục..."):
+                    try:
+                        res = requests.post(f"{API_BASE}/admin/convert_docs", json={"source_dir": source_dir}, headers=HEADERS)
+                        if res.status_code == 200:
+                            st.success("Convert thành công!")
+                            st.code(res.json().get("output", ""))
+                        else:
+                            st.error(f"Lỗi: {res.text}")
+                    except Exception as e:
+                        st.error(f"Lỗi kết nối API: {e}")
+                        
+    with col2:
+        with st.container(border=True):
+            st.subheader("2. Build Massive Index")
+            target_dir = st.text_input("Thư mục chứa Markdown:", value=os.path.join(os.getcwd(), "docs", "daily"))
+            if st.button(":material/database: Chạy Qdrant Indexer"):
+                with st.spinner("Đang nhúng (Embedding) và Indexing. Vui lòng không đóng trang..."):
+                    try:
+                        res = requests.post(f"{API_BASE}/admin/build_index", json={"target_dir": target_dir}, headers=HEADERS)
+                        if res.status_code == 200:
+                            st.success("Index thành công!")
+                            st.code(res.json().get("output", ""))
+                        else:
+                            st.error(f"Lỗi: {res.text}")
+                    except Exception as e:
+                        st.error(f"Lỗi kết nối API: {e}")
