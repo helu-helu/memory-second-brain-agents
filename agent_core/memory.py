@@ -99,7 +99,8 @@ class MemoryManager:
             "skill": skill,
             "success_rate": success_rate
         }
-        return self.add(log_text, agent_id="evals_system", metadata=metadata)
+        metadata["source"] = "evals_system"
+        return self.add(log_text, metadata=metadata)
 
     def format_for_prompt(self, memories: list[dict]) -> str:
         """Format list of memories into a bulleted string for the System Prompt."""

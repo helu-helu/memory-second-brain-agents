@@ -41,7 +41,7 @@ class ContextBuilder:
         self.knowledge = knowledge
 
 
-    async def build_async(self, user_query: str, agent_id: str = "default_user", requires: dict = None) -> str:
+    async def build_async(self, user_query: str, requires: dict = None) -> str:
         """
         Tạo System Prompt hoàn chỉnh bằng cách chạy Song Song (Parallel)
         tìm kiếm trên cả RAG và Mem0. Tăng tốc độ gấp đôi.
@@ -49,7 +49,7 @@ class ContextBuilder:
         import asyncio
         
         # Chạy 2 hàm search blocking trong các thread riêng biệt cùng lúc
-        memories_task = asyncio.to_thread(self.memory.search, user_query, limit=5, agent_id=agent_id)
+        memories_task = asyncio.to_thread(self.memory.search, user_query, limit=5)
         knowledge_task = asyncio.to_thread(self.knowledge.search, user_query, top_k=3, tags=None, requires=requires)
 
         

@@ -82,42 +82,32 @@ class KnowledgeBase:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         Settings.embed_model = HuggingFaceEmbedding(model_name=config["rag"]["embedding_model"], device=device)
         
-        # 2. Use LLM dynamically based on model_registry
-        llm_model = config.get("model_registry", {}).get("llm_model", "gemini-2.5-flash")
-        llm_model_lower = llm_model.lower()
+        # 2. Select the provider explicitly; model names are not provider identifiers.
+        llm_config = config.get("model_registry", {}).get("llm", {})
+        llm_provider = llm_config.get("provider", "ollama").lower()
+        llm_model = llm_config.get("model", "qwen3:4b")
         
-        if "gemini" in llm_model_lower:
+        if llm_provider == "gemini":
             from llama_index.llms.google_genai import GoogleGenAI
             Settings.llm = GoogleGenAI(model=llm_model, api_key=os.getenv("GEMINI_API_KEY"))
-        elif "gpt" in llm_model_lower:
+        elif llm_provider == "openai":
             from llama_index.llms.openai import OpenAI
             Settings.llm = OpenAI(model=llm_model, api_key=os.getenv("OPENAI_API_KEY"))
-        elif "claude" in llm_model_lower:
+        elif llm_provider == "anthropic":
             from llama_index.llms.anthropic import Anthropic
             Settings.llm = Anthropic(model=llm_model, api_key=os.getenv("ANTHROPIC_API_KEY"))
-        elif "qwen" in llm_model_lower or "llama" in llm_model_lower or "phi" in llm_model_lower:
-            # Note: If it's an OpenRouter model, it usually has a '/' in the name (e.g. meta-llama/...)
-            if "/" in llm_model_lower or "free" in llm_model_lower or "openrouter" in llm_model_lower:
-                from llama_index.llms.openai import OpenAI
-                Settings.llm = OpenAI(
-                    model=llm_model, 
-                    api_key=os.getenv("OPENROUTER_API_KEY"), 
-                    api_base="https://openrouter.ai/api/v1"
-                )
-            else:
-                from llama_index.llms.ollama import Ollama
-                Settings.llm = Ollama(model=llm_model, request_timeout=120.0)
-        elif "openrouter" in llm_model_lower:
+        elif llm_provider == "openrouter":
             from llama_index.llms.openai import OpenAI
             Settings.llm = OpenAI(
                 model=llm_model, 
                 api_key=os.getenv("OPENROUTER_API_KEY"), 
                 api_base="https://openrouter.ai/api/v1"
             )
+        elif llm_provider == "ollama":
+            from llama_index.llms.ollama import Ollama
+            Settings.llm = Ollama(model=llm_model, request_timeout=120.0)
         else:
-            print(f"[KnowledgeBase] Warning: Unknown LLM {llm_model}. Falling back to Gemini.")
-            from llama_index.llms.google_genai import GoogleGenAI
-            Settings.llm = GoogleGenAI(model="gemini-2.5-flash", api_key=os.getenv("GEMINI_API_KEY"))
+            raise ValueError(f"Unsupported LLM provider: {llm_provider}")
 
     def load(self, limit: int = None, input_files: list[str] = None, force_rebuild: bool = False) -> bool:
         """
@@ -132,12 +122,15 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
-            host = config["rag"].get("host")
-            if host:
+            qdrant_mode = config["rag"].get("mode", "local")
+            if qdrant_mode == "server":
+                host = config["rag"].get("host", "127.0.0.1")
                 port = config["rag"].get("port", 6333)
                 client = QdrantClient(url=f"http://{host}:{port}")
-            else:
+            elif qdrant_mode == "local":
                 client = QdrantClient(path=os.path.join(ROOT_DIR, config["rag"]["db_path"].replace("./", "")))
+            else:
+                raise ValueError(f"Unsupported Qdrant mode: {qdrant_mode}")
             
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
 

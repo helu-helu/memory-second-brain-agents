@@ -36,6 +36,21 @@ elif "openrouter" in mem0_provider:
     os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
     os.environ["OPENAI_API_KEY"] = mem0_api_key or ""
 
+memory_qdrant = config["memory"]["qdrant"]
+memory_qdrant_config = {
+    "collection_name": memory_qdrant["collection_name"],
+    "embedding_model_dims": memory_qdrant["embedding_model_dims"],
+}
+if memory_qdrant.get("mode", "local") == "server":
+    memory_qdrant_config.update(
+        host=memory_qdrant.get("host", "127.0.0.1"),
+        port=memory_qdrant.get("port", 6333),
+    )
+else:
+    memory_qdrant_config["path"] = os.path.normpath(
+        os.path.join(ROOT_DIR, memory_qdrant["path"])
+    )
+
 # Export cấu hình cho Mem0 (MemoryManager)
 MEM0_CONFIG = {
     "llm": {
@@ -54,13 +69,7 @@ MEM0_CONFIG = {
     },
     "vector_store": {
         "provider": "qdrant",
-        "config": {
-            "collection_name": config["memory"]["qdrant"]["collection_name"],
-            "path": os.path.normpath(os.path.join(ROOT_DIR, config["memory"]["qdrant"]["path"])),
-            "host": config["memory"]["qdrant"].get("host"),
-            "port": config["memory"]["qdrant"].get("port", 6333),
-            "embedding_model_dims": config["memory"]["qdrant"]["embedding_model_dims"]
-        }
+        "config": memory_qdrant_config,
     },
     "history_db_path": os.path.normpath(os.path.join(ROOT_DIR, config["memory"]["history_db_path"])),
     "version": config["memory"]["version"]
