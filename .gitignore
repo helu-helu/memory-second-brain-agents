@@ -1,11 +1,13 @@
 # Python Cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .tox/
 .coverage
+.coverage.*
 htmlcov/
 
 # Virtual Environments
@@ -15,8 +17,8 @@ ENV/
 env/
 
 # Environment Variables & Keys
-.env
-.env.local
+.env*
+!.env.example
 
 # Databases & Local Storage (Avoid committing heavy binary vectors)
 db/
@@ -42,6 +44,8 @@ Thumbs.db
 # Project-specific Temporary Files
 scratch/
 session_checkpoint.md
+logs/*
+!logs/.gitkeep
 
 # Agent System Prompt
 .agents/
@@ -49,4 +53,4 @@ session_checkpoint.md
 AGENTS
 
 # Graphify Output (Do not commit large graph outputs)
-graphify-out
+graphify-out/
