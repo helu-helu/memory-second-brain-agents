@@ -48,3 +48,5 @@ session_checkpoint.md
 .claude/
 AGENTS
 
+# Graphify Output (Do not commit large graph outputs)
+graphify-out
