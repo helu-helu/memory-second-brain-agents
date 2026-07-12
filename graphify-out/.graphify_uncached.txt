@@ -1,0 +1,4 @@
+D:\Workspace\Another\Agent\Memory\Memory and Second Brain for Agents\README.md
+D:\Workspace\Another\Agent\Memory\Memory and Second Brain for Agents\compose.yaml
+D:\Workspace\Another\Agent\Memory\Memory and Second Brain for Agents\config.yaml
+D:\Workspace\Another\Agent\Memory\Memory and Second Brain for Agents\requirements.txt
