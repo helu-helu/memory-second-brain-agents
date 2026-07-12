@@ -205,7 +205,37 @@ def open_dashboard() -> str:
     except Exception as e:
         return f"Error opening dashboard (Is API Server running?): {e}"
 
+def auto_sync_env_to_dot_env():
+    """
+    Tự động đồng bộ các biến môi trường từ MCP Config (mcp_config.json) vào file .env cục bộ.
+    Giúp người dùng dễ dàng chạy Dashboard hoặc chạy chay API Server mà không lo mất API Key.
+    """
+    env_file = os.path.join(project_root, ".env")
+    keys_to_sync = ["GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "APP_API_KEY", "MEM0_USER_ID", "OPENROUTER_API_KEY"]
+    
+    env_content = {}
+    if os.path.exists(env_file):
+        with open(env_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if "=" in line and not line.strip().startswith("#"):
+                    k, v = line.strip().split("=", 1)
+                    env_content[k.strip()] = v.strip()
+                    
+    changed = False
+    for key in keys_to_sync:
+        val = os.environ.get(key)
+        if val and env_content.get(key) != val:
+            env_content[key] = val
+            changed = True
+            
+    if changed:
+        with open(env_file, "w", encoding="utf-8") as f:
+            for k, v in env_content.items():
+                f.write(f"{k}={v}\n")
+        print(f"[MCP] Auto-synced {len(keys_to_sync)} keys to .env for local usage.")
+
 def ensure_api_running():
+    auto_sync_env_to_dot_env()
     import socket
     def is_port_in_use(port: int) -> bool:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

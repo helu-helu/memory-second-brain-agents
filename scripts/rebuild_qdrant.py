@@ -1,52 +1,74 @@
-import os
 import sys
-from qdrant_client import QdrantClient
+import os
 
-# Thêm root_dir vào sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from agent_core.config import config, COLLECTION_NAME, MEM0_CONFIG
+from scripts.build_massive_index import get_all_valid_files, BATCH_SIZE
+from agent_core.knowledge import KnowledgeBase, extract_metadata_from_path
+from agent_core.config import config, QDRANT_PATH, COLLECTION_NAME, ROOT_DIR
+import time
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 
 def main():
-    print("=" * 55)
-    print("  QDRANT REBUILD SCRIPT (PHASE 2)")
-    print("=" * 55)
-    
-    qdrant_path = os.path.join(project_root, config["memory"]["qdrant"]["path"].replace("./", ""))
-    
-    try:
-        client = QdrantClient(path=qdrant_path)
-    except Exception as e:
-        print(f"[Error] Could not connect to local Qdrant at {qdrant_path} - {e}")
+    target_dir = os.path.abspath("docs")
+    print(f"Scanning for valid documents in: {target_dir}")
+    files = get_all_valid_files(target_dir)
+    total_files = len(files)
+    if total_files == 0:
+        print("No valid text/markdown files found.")
         return
-
-    # Drop RAG Collection
+        
+    kb = KnowledgeBase()
+    print("Initializing Local Embedding Model...")
+    kb._setup_settings()
+    
+    os.makedirs(QDRANT_PATH, exist_ok=True)
+    host = config["rag"].get("host")
+    if host:
+        port = config["rag"].get("port", 6333)
+        client = QdrantClient(url=f"http://{host}:{port}")
+    else:
+        db_path_absolute = os.path.join(ROOT_DIR, config["rag"]["db_path"].replace("./", ""))
+        client = QdrantClient(path=db_path_absolute)
+        
+    vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+    
+    # Force rebuild: delete collection if exists
     if client.collection_exists(COLLECTION_NAME):
         client.delete_collection(COLLECTION_NAME)
-        print(f"[SUCCESS] Deleted RAG collection: {COLLECTION_NAME}")
-    else:
-        print(f"[INFO] RAG collection {COLLECTION_NAME} does not exist.")
         
-    # Drop Mem0 Collection
-    mem0_collection = MEM0_CONFIG["vector_store"]["config"]["collection_name"]
-    if client.collection_exists(mem0_collection):
-        client.delete_collection(mem0_collection)
-        print(f"[SUCCESS] Deleted Mem0 collection: {mem0_collection}")
-    else:
-        print(f"[INFO] Mem0 collection {mem0_collection} does not exist.")
-
-    print("\n[INFO] Re-indexing RAG with Semantic Chunking (MarkdownNodeParser)...")
-    from agent_core.knowledge import KnowledgeBase
-    kb = KnowledgeBase()
-    # force_rebuild = True to ensure it creates the collection again
-    success = kb.load(force_rebuild=True)
+    md_parser = MarkdownNodeParser()
+    text_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=100)
     
-    if success:
-        print("\n[SUCCESS] Rebuild complete! Vectors have been updated.")
-    else:
-        print("\n[FAILED] Rebuild encountered an error.")
+    # We create an empty index first
+    index = VectorStoreIndex.from_documents(
+        [], 
+        storage_context=storage_context,
+        transformations=[md_parser, text_parser]
+    )
+    
+    start_time = time.time()
+    for i in range(0, total_files, BATCH_SIZE):
+        batch = files[i:i + BATCH_SIZE]
+        print(f"\n--- Processing Batch {i//BATCH_SIZE + 1} ({i}/{total_files}) ---")
+        try:
+            reader = SimpleDirectoryReader(input_files=batch, file_metadata=extract_metadata_from_path)
+            documents = reader.load_data()
+            for doc in documents:
+                doc.doc_id = doc.metadata.get("file_path", doc.doc_id)
+                index.insert(doc)
+            print(f"Batch {i//BATCH_SIZE + 1} Success!")
+        except Exception as e:
+            print(f"Failed to process batch {i//BATCH_SIZE + 1}: {e}")
+            
+    end_time = time.time()
+    print(f"\nIndexing complete! Time taken: {end_time - start_time:.2f} seconds.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

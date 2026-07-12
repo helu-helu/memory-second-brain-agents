@@ -11,6 +11,8 @@ rag:
   workflows_dir: "./docs/Workflows"
   skills_dir: "./.agents/skills"
   db_path: "./db/qdrant_rag"
+  host: "localhost"
+  port: 6333
   collection_name: "personal_knowledge_base"
   embedding_model: "BAAI/bge-small-en-v1.5"
 
@@ -25,12 +27,18 @@ model_registry:
     - id: "claude-3-5-sonnet"
       tier: "reasoning"
       features: ["tool_calling", "structured_output", "complex_planning"]
-    - id: "llama-3-8b"
+    - id: "google/gemma-2-9b-it:free"
       tier: "nano"
       features: ["tool_calling"]
+    - id: "qwen/qwen-2.5-coder-32b-instruct:free"
+      tier: "standard"
+      features: ["tool_calling", "structured_output"]
+    - id: "meta-llama/llama-3.3-70b-instruct:free"
+      tier: "reasoning"
+      features: ["tool_calling", "structured_output", "complex_planning"]
   routing:
     default_strategy: "best_quality"
-  llm_model: "gemini-2.5-flash"
+  llm_model: "ollama:qwen2.5-coder:7b"
   top_k: 3
 
 memory:
@@ -38,11 +46,13 @@ memory:
   history_db_path: "./db/mem0_history.db"
   qdrant:
     path: "./db/qdrant_mem0"
+    host: "localhost"
+    port: 6333
     collection_name: "personal_agent_memory"
     embedding_model_dims: 384
   llm:
-    provider: "gemini"
-    model: "gemini-2.5-flash"
+    provider: "ollama"
+    model: "qwen2.5-coder:7b"
     temperature: 0
   embedder:
     provider: "huggingface"

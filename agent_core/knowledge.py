@@ -78,7 +78,9 @@ class KnowledgeBase:
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
         
         # 1. Use HuggingFace for offline, unlimited local embeddings (CPU optimized for Ryzen 7)
-        Settings.embed_model = HuggingFaceEmbedding(model_name=config["rag"]["embedding_model"])
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        Settings.embed_model = HuggingFaceEmbedding(model_name=config["rag"]["embedding_model"], device=device)
         
         # 2. Use LLM dynamically based on model_registry
         llm_model = config.get("model_registry", {}).get("llm_model", "gemini-2.5-flash")
@@ -93,6 +95,25 @@ class KnowledgeBase:
         elif "claude" in llm_model_lower:
             from llama_index.llms.anthropic import Anthropic
             Settings.llm = Anthropic(model=llm_model, api_key=os.getenv("ANTHROPIC_API_KEY"))
+        elif "qwen" in llm_model_lower or "llama" in llm_model_lower or "phi" in llm_model_lower:
+            # Note: If it's an OpenRouter model, it usually has a '/' in the name (e.g. meta-llama/...)
+            if "/" in llm_model_lower or "free" in llm_model_lower or "openrouter" in llm_model_lower:
+                from llama_index.llms.openai import OpenAI
+                Settings.llm = OpenAI(
+                    model=llm_model, 
+                    api_key=os.getenv("OPENROUTER_API_KEY"), 
+                    api_base="https://openrouter.ai/api/v1"
+                )
+            else:
+                from llama_index.llms.ollama import Ollama
+                Settings.llm = Ollama(model=llm_model, request_timeout=120.0)
+        elif "openrouter" in llm_model_lower:
+            from llama_index.llms.openai import OpenAI
+            Settings.llm = OpenAI(
+                model=llm_model, 
+                api_key=os.getenv("OPENROUTER_API_KEY"), 
+                api_base="https://openrouter.ai/api/v1"
+            )
         else:
             print(f"[KnowledgeBase] Warning: Unknown LLM {llm_model}. Falling back to Gemini.")
             from llama_index.llms.google_genai import GoogleGenAI
@@ -111,7 +132,13 @@ class KnowledgeBase:
             os.makedirs(QDRANT_PATH, exist_ok=True)
             os.makedirs(DOCS_DIR, exist_ok=True)
 
-            client = QdrantClient(path=os.path.join(ROOT_DIR, config["rag"]["db_path"].replace("./", "")))
+            host = config["rag"].get("host")
+            if host:
+                port = config["rag"].get("port", 6333)
+                client = QdrantClient(url=f"http://{host}:{port}")
+            else:
+                client = QdrantClient(path=os.path.join(ROOT_DIR, config["rag"]["db_path"].replace("./", "")))
+            
             vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
 
             # Check if index already exists in Qdrant to avoid rebuilding (saves tokens and time)

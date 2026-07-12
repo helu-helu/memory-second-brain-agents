@@ -16,7 +16,7 @@ if project_root not in sys.path:
 
 from agent_core.knowledge import KnowledgeBase
 
-BATCH_SIZE = 100  # Safe batch size for Ryzen 7 5800H / 16GB RAM
+BATCH_SIZE = 1000  # Increased batch size for GPU (RTX 3060)
 VALID_EXTS = {".md", ".txt", ".json"}
 
 def get_all_valid_files(target_dir):

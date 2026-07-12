@@ -47,15 +47,14 @@ app = FastAPI(
 )
 
 # Lazy initialization
-_memory_managers = {}
+_memory_manager = None
 _knowledge_base = None
 
-def get_memory(user_id: str = None):
-    global _memory_managers
-    target_user = user_id or os.getenv("MEM0_USER_ID", "personal_user")
-    if target_user not in _memory_managers:
-        _memory_managers[target_user] = MemoryManager(user_id=target_user)
-    return _memory_managers[target_user]
+def get_memory():
+    global _memory_manager
+    if _memory_manager is None:
+        _memory_manager = MemoryManager()
+    return _memory_manager
 
 def get_knowledge():
     global _knowledge_base
@@ -140,7 +139,7 @@ async def ping():
 
 class MemoryAddRequest(BaseModel):
     text: str
-    user_id: str = None
+    agent_id: str = "default_user"
 
 @app.get("/rag/search")
 def rag_search(q: str, tags: list[str] = Query(None), requires_tier: str = None, requires_features: list[str] = Query(None), api_key: str = Depends(get_api_key)):
@@ -160,11 +159,11 @@ def rag_search(q: str, tags: list[str] = Query(None), requires_tier: str = None,
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/memory/search")
-def memory_search(q: str, user_id: str = None, api_key: str = Depends(get_api_key)):
+def memory_search(q: str, agent_id: str = "default_user", api_key: str = Depends(get_api_key)):
     """Search dynamic long-term memories."""
     try:
-        mem = get_memory(user_id)
-        memories = mem.search(q, limit=5)
+        mem = get_memory()
+        memories = mem.search(q, limit=5, agent_id=agent_id)
         formatted = mem.format_for_prompt(memories)
         return {"result": formatted}
     except Exception as e:
@@ -175,19 +174,19 @@ def memory_search(q: str, user_id: str = None, api_key: str = Depends(get_api_ke
 def memory_add(req: MemoryAddRequest, api_key: str = Depends(get_api_key)):
     """Add a new dynamic memory."""
     try:
-        mem = get_memory(req.user_id)
-        success = mem.add(req.text)
+        mem = get_memory()
+        success = mem.add(req.text, agent_id=req.agent_id)
         return {"success": success}
     except Exception as e:
         print(f"[Error] /memory/add: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/memory/all")
-def memory_all(user_id: str = None, api_key: str = Depends(get_api_key)):
-    """Get all dynamic memories for a user."""
+def memory_all(agent_id: str = "default_user", api_key: str = Depends(get_api_key)):
+    """Get all dynamic memories for an agent."""
     try:
-        mem = get_memory(user_id)
-        memories = mem.get_all()
+        mem = get_memory()
+        memories = mem.get_all(agent_id=agent_id)
         return {"memories": memories}
     except Exception as e:
         print(f"[Error] /memory/all: {e}")

@@ -30,11 +30,16 @@ elif "openai" in mem0_provider:
     mem0_api_key = os.getenv("OPENAI_API_KEY")
 elif "anthropic" in mem0_provider:
     mem0_api_key = os.getenv("ANTHROPIC_API_KEY")
+elif "openrouter" in mem0_provider:
+    mem0_api_key = os.getenv("OPENROUTER_API_KEY")
+    # Mem0 uses openai client for openrouter
+    os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+    os.environ["OPENAI_API_KEY"] = mem0_api_key or ""
 
 # Export cấu hình cho Mem0 (MemoryManager)
 MEM0_CONFIG = {
     "llm": {
-        "provider": config["memory"]["llm"]["provider"],
+        "provider": "openai" if mem0_provider == "openrouter" else config["memory"]["llm"]["provider"],
         "config": {
             "model": config["memory"]["llm"]["model"],
             "api_key": mem0_api_key,
@@ -52,6 +57,8 @@ MEM0_CONFIG = {
         "config": {
             "collection_name": config["memory"]["qdrant"]["collection_name"],
             "path": os.path.normpath(os.path.join(ROOT_DIR, config["memory"]["qdrant"]["path"])),
+            "host": config["memory"]["qdrant"].get("host"),
+            "port": config["memory"]["qdrant"].get("port", 6333),
             "embedding_model_dims": config["memory"]["qdrant"]["embedding_model_dims"]
         }
     },
