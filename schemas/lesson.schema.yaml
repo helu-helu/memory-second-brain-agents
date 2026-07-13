@@ -1,0 +1,13 @@
+name: Lesson
+required:
+  - id
+  - title
+  - status
+  - confidence
+  - trigger
+  - scope
+  - guidance
+  - evidence
+enums:
+  status: [draft, candidate, approved, active, deprecated, superseded, rejected]
+  confidence: [low, medium, high]

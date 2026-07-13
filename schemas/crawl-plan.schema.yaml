@@ -1,0 +1,14 @@
+name: CrawlPlan
+required:
+  - plan_id
+  - corpus_id
+  - start_urls
+  - allowed_domains
+  - output_path
+  - snapshot_policy
+  - rate_limit
+  - max_pages
+  - approval_status
+enums:
+  snapshot_policy: [fixed_snapshot, refreshable_snapshot]
+  approval_status: [draft, approved, rejected]

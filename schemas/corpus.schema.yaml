@@ -1,0 +1,21 @@
+name: Corpus
+required:
+  - corpus_id
+  - category
+  - vendor
+  - product
+  - version
+  - authority_level
+  - mutability
+  - update_policy
+  - refresh_cadence
+  - acquisition
+  - status
+enums:
+  category: [engines, languages, frameworks, agent_platforms, tools, libraries]
+  authority_level: [official, vendor, community, internal, unknown]
+  mutability: [immutable, refreshable, rolling]
+  update_policy: [fixed_snapshot, refreshable_snapshot, rolling_latest]
+  refresh_cadence: [none, manual, scheduled]
+  acquisition: [manual, download, crawl, generated]
+  status: [planned, available, indexed, deprecated, rejected]

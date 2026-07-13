@@ -1,0 +1,13 @@
+queries:
+  - query: "How do I use the Unity Input System?"
+    expected_product: Unity
+    expected_corpus: unity-6.3
+    confidence: high
+  - query: "How should I configure URP in this Unity project?"
+    expected_product: Unity
+    expected_corpus: unity-6.3
+    confidence: medium
+  - query: "How do GameObject and MonoBehaviour lifecycle methods work?"
+    expected_product: Unity
+    expected_corpus: unity-6.3
+    confidence: high

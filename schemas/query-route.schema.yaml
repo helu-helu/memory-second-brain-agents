@@ -1,0 +1,9 @@
+name: QueryRoute
+required:
+  - query
+  - detected_category
+  - detected_product
+  - selected_corpora
+  - route_confidence
+enums:
+  route_confidence: [high, medium, low]

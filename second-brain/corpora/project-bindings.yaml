@@ -1,0 +1,6 @@
+bindings:
+  - binding_id: local-unity-default
+    product: Unity
+    preferred_corpus_id: unity-6.3
+    strict_version: true
+    notes: Unity engine docs must match the project version unless the user asks otherwise.

@@ -1,0 +1,12 @@
+name: Preference
+required:
+  - id
+  - title
+  - status
+  - confidence
+  - applies_when
+  - preference
+  - evidence
+enums:
+  status: [draft, candidate, approved, active, deprecated, superseded, rejected]
+  confidence: [low, medium, high]

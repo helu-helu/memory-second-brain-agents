@@ -1,0 +1,55 @@
+cases:
+  - id: unity-input-system
+    query: "How do I use the Unity Input System?"
+    expected_product: Unity
+    expected_corpus: unity-6.3
+    expected_path_patterns:
+      - Input
+    max_sources: 8
+    expect_clarification: false
+
+  - id: unity-monobehaviour
+    query: "How do GameObject and MonoBehaviour lifecycle methods work in Unity?"
+    expected_product: Unity
+    expected_corpus: unity-6.3
+    expected_path_patterns:
+      - MonoBehaviour
+      - GameObject
+    max_sources: 8
+    expect_clarification: false
+
+  - id: unity-urp
+    query: "How should I configure URP in this Unity project?"
+    expected_product: Unity
+    expected_corpus: unity-6.3
+    expected_path_patterns:
+      - URP
+      - Universal
+    max_sources: 8
+    expect_clarification: false
+
+  - id: unity-build-pipeline
+    query: "How do I configure the Unity build pipeline?"
+    expected_product: Unity
+    expected_corpus: unity-6.3
+    expected_path_patterns:
+      - Build
+    max_sources: 8
+    expect_clarification: false
+
+  - id: codex-mcp-missing-local-corpus
+    query: "How should Codex skills use MCP?"
+    expected_product: Codex
+    expected_corpus: codex-docs
+    expected_path_patterns: []
+    max_sources: 5
+    expect_clarification: false
+    expect_warning: true
+
+  - id: unknown-ambiguous
+    query: "How should I configure this thing?"
+    expected_product: unknown
+    expected_corpus: null
+    expected_path_patterns: []
+    max_sources: 5
+    expect_clarification: true

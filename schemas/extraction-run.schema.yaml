@@ -1,0 +1,11 @@
+name: ExtractionRun
+required:
+  - id
+  - created_at
+  - operator
+  - inputs
+  - method
+  - outputs
+  - review_status
+enums:
+  review_status: [pending, approved, rejected, partial]

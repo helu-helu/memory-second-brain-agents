@@ -1,0 +1,16 @@
+name: SourceDocument
+required:
+  - id
+  - title
+  - source_path
+  - source_type
+  - checksum
+  - status
+  - visibility
+  - sensitivity
+enums:
+  source_type: [official_docs, third_party_guidance, project_doc, user_note]
+  mutability: [immutable, mutable]
+  visibility: [private, project, team, public]
+  sensitivity: [low, medium, high]
+  status: [raw, converted, normalized, indexed, deprecated, rejected]

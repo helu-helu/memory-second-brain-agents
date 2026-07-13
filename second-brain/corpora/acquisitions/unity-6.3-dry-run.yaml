@@ -1,0 +1,16 @@
+manifest_id: acquisition-unity-6.3
+corpus_id: unity-6.3
+method: manual_import
+authority_level: official
+source: docs/massive/Unity_6_3_Markdown
+product: Unity
+version: '6.3'
+snapshot_date: null
+status: dry_run
+file_counts:
+  total: 100
+  supported: 100
+  unsupported: 0
+warnings: []
+ready_for_indexing: true
+created_at: '2026-07-13T17:57:30.234563+00:00'

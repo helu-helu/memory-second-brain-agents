@@ -1,0 +1,16 @@
+name: SkillCandidate
+required:
+  - id
+  - name
+  - status
+  - confidence
+  - trigger
+  - inputs
+  - workflow
+  - outputs
+  - scripts
+  - eval
+  - failure_modes
+enums:
+  status: [draft, candidate, approved, active, deprecated, superseded, rejected]
+  confidence: [low, medium, high]

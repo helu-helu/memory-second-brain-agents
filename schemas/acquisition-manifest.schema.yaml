@@ -1,0 +1,17 @@
+name: AcquisitionManifest
+required:
+  - manifest_id
+  - corpus_id
+  - method
+  - authority_level
+  - source
+  - product
+  - version
+  - status
+  - file_counts
+  - warnings
+  - ready_for_indexing
+enums:
+  method: [manual_import, download, crawl, generated]
+  authority_level: [official, vendor, community, internal, unknown]
+  status: [planned, dry_run, imported, validated, rejected]

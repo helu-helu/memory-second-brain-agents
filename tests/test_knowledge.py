@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-from agent_core.knowledge import KnowledgeBase
+from agent_core.knowledge import KnowledgeBase, clamp_source_limit, extract_metadata_from_path
 
 def test_load_skip_empty_directory(mock_qdrant, mocker, tmp_path):
     """Test loading a directory skips if it's empty."""
@@ -109,3 +109,36 @@ def test_capability_routing(mock_qdrant, mocker):
     assert "high_tier.md" in result_high
     assert "low_tier.md" in result_high
     assert "general.md" in result_high
+
+
+def test_search_caps_source_limit_and_filters_corpus(mock_qdrant, mocker):
+    mocker.patch("agent_core.knowledge.KnowledgeBase._setup_settings")
+    mock_hyde_cls = mocker.patch("llama_index.core.indices.query.query_transform.HyDEQueryTransform")
+    mock_bundle = MagicMock()
+    mock_bundle.custom_embedding_strs = ["mock"]
+    mock_hyde_cls.return_value.return_value = mock_bundle
+
+    kb = KnowledgeBase()
+    mock_index = MagicMock()
+    mock_retriever = MagicMock()
+    mock_index.as_retriever.return_value = mock_retriever
+    mock_retriever.retrieve.return_value = []
+    kb._index = mock_index
+    kb._ready = True
+
+    kb.search("unity", top_k=999, corpus_ids=["unity-6.3"])
+
+    kwargs = mock_index.as_retriever.call_args.kwargs
+    assert kwargs["similarity_top_k"] == 20
+    assert kwargs["filters"] is not None
+
+
+def test_extract_metadata_infers_unity_corpus():
+    path = "D:/Workspace/Another/Agent/Memory/Memory and Second Brain for Agents/docs/massive/Unity_6_3_Markdown/example.md"
+    metadata = extract_metadata_from_path(path)
+    assert metadata["corpus_id"] == "unity-6.3"
+
+
+def test_clamp_source_limit():
+    assert clamp_source_limit(0) >= 1
+    assert clamp_source_limit(999) == 20

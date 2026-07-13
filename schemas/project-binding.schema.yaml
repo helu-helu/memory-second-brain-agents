@@ -1,0 +1,6 @@
+name: ProjectBinding
+required:
+  - binding_id
+  - product
+  - preferred_corpus_id
+  - strict_version

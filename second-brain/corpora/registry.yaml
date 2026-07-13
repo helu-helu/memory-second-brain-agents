@@ -1,0 +1,81 @@
+corpora:
+  - corpus_id: unity-6.3
+    category: engines
+    vendor: Unity
+    product: Unity
+    version: "6.3"
+    authority_level: official
+    mutability: immutable
+    update_policy: fixed_snapshot
+    snapshot_date: null
+    refresh_cadence: none
+    root_path: docs/massive/Unity_6_3_Markdown
+    acquisition: manual
+    status: available
+    default_for:
+      - local-unity-6.3-projects
+
+  - corpus_id: unity-6.5
+    category: engines
+    vendor: Unity
+    product: Unity
+    version: "6.5"
+    authority_level: official
+    mutability: immutable
+    update_policy: fixed_snapshot
+    snapshot_date: null
+    refresh_cadence: none
+    root_path: null
+    acquisition: manual
+    status: planned
+
+  - corpus_id: python-docs
+    category: languages
+    vendor: Python Software Foundation
+    product: Python
+    version: project-bound
+    authority_level: official
+    mutability: refreshable
+    update_policy: refreshable_snapshot
+    snapshot_date: null
+    refresh_cadence: manual
+    root_path: null
+    acquisition: manual
+    status: planned
+
+  - corpus_id: typescript-docs
+    category: languages
+    vendor: Microsoft
+    product: TypeScript
+    version: project-bound
+    authority_level: official
+    mutability: refreshable
+    update_policy: refreshable_snapshot
+    snapshot_date: null
+    refresh_cadence: manual
+    root_path: null
+    acquisition: manual
+    status: planned
+
+  - corpus_id: codex-docs
+    category: agent_platforms
+    vendor: OpenAI
+    product: Codex
+    version: snapshot
+    authority_level: official
+    mutability: refreshable
+    update_policy: refreshable_snapshot
+    snapshot_date: "2026-07-13"
+    refresh_cadence: manual
+    root_path: null
+    acquisition: crawl
+    status: planned
+    taxonomy:
+      - surfaces
+      - customization
+      - skills
+      - plugins
+      - mcp
+      - permissions
+      - workflows
+      - troubleshooting

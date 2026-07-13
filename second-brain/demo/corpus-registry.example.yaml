@@ -1,0 +1,12 @@
+corpora:
+  - corpus_id: unity-6.3
+    category: engines
+    vendor: Unity
+    product: Unity
+    version: "6.3"
+    authority_level: official
+    mutability: immutable
+    update_policy: fixed_snapshot
+    refresh_cadence: none
+    acquisition: manual
+    status: available

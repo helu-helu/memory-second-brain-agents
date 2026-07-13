@@ -14,6 +14,46 @@ from agent_core.config import config, DOCS_DIR, SKILLS_DIR, QDRANT_PATH, COLLECT
 
 load_dotenv()
 
+MAX_CONTEXT_SOURCES = 20
+
+
+def _load_corpus_roots() -> list[tuple[str, str]]:
+    registry_path = os.path.join(ROOT_DIR, "second-brain", "corpora", "registry.yaml")
+    if not os.path.exists(registry_path):
+        return []
+    try:
+        with open(registry_path, "r", encoding="utf-8") as f:
+            registry = yaml.safe_load(f) or {}
+    except Exception:
+        return []
+
+    roots = []
+    for corpus in registry.get("corpora", []):
+        root_path = corpus.get("root_path")
+        corpus_id = corpus.get("corpus_id")
+        if root_path and corpus_id:
+            roots.append((corpus_id, os.path.normcase(os.path.abspath(os.path.join(ROOT_DIR, root_path)))))
+    return roots
+
+
+def infer_corpus_id(file_path: str) -> str | None:
+    """Infer the registered corpus id for a file path, if it lives under a corpus root."""
+    file_path_norm = os.path.normcase(os.path.abspath(file_path))
+    matches = [
+        (corpus_id, root)
+        for corpus_id, root in _load_corpus_roots()
+        if file_path_norm == root or file_path_norm.startswith(root + os.sep)
+    ]
+    if not matches:
+        return None
+    matches.sort(key=lambda item: len(item[1]), reverse=True)
+    return matches[0][0]
+
+
+def clamp_source_limit(top_k: int | None) -> int:
+    requested = top_k or config.get("rag", {}).get("top_k", 3)
+    return max(1, min(int(requested), MAX_CONTEXT_SOURCES))
+
 
 def extract_metadata_from_path(file_path: str) -> dict:
     """Extract folder names as tags, and parse YAML frontmatter for 'requires' capability."""
@@ -34,6 +74,9 @@ def extract_metadata_from_path(file_path: str) -> dict:
     parts = os.path.normpath(rel_path).split(os.sep)[:-1]
     tags = [p for p in parts if p != "." and p != ".."]
     metadata["tags"] = tags
+    corpus_id = infer_corpus_id(file_path)
+    if corpus_id:
+        metadata["corpus_id"] = corpus_id
     
     # 2. Parse YAML Frontmatter for Capability routing
     if file_path.endswith('.md'):
@@ -238,7 +281,7 @@ class KnowledgeBase:
             print(f"[KnowledgeBase] [Incremental Sync] Failed for {file_path}: {e}")
             return False
 
-    def search(self, query: str, top_k: int = None, tags: list[str] = None, requires: dict = None) -> str:
+    def search(self, query: str, top_k: int = None, tags: list[str] = None, requires: dict = None, corpus_ids: list[str] = None) -> str:
         """
         Search and retrieve raw text snippets.
         Uses HyDE Query Transform for accuracy and supports metadata tag & capability filtering.
@@ -250,12 +293,16 @@ class KnowledgeBase:
             if not self._ready:
                 return "(Knowledge Base is not loaded)"
 
-            top_k = top_k or config.get("rag", {}).get("top_k", 3)
+            top_k = clamp_source_limit(top_k)
             
-            # Setup Metadata Filters (Tags only)
+            # Setup Metadata Filters
             filters = None
+            filter_list = []
             if tags:
-                filter_list = [ExactMatchFilter(key="tags", value=tag) for tag in tags]
+                filter_list.extend(ExactMatchFilter(key="tags", value=tag) for tag in tags)
+            if corpus_ids:
+                filter_list.extend(ExactMatchFilter(key="corpus_id", value=corpus_id) for corpus_id in corpus_ids)
+            if filter_list:
                 filters = MetadataFilters(filters=filter_list)
                 
             # Increase initial retrieval if we are applying capability filters later

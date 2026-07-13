@@ -1,0 +1,13 @@
+name: ContextPack
+required:
+  - id
+  - query
+  - created_at
+  - client
+  - corpus
+  - limits
+  - retrieval
+  - quality
+  - status
+enums:
+  status: [generated, reviewed, archived]
