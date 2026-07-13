@@ -50,7 +50,8 @@ logs/*
 # Agent System Prompt
 .agents/
 .claude/
-AGENTS
+.codex/
+AGENTS.md
 
 # Graphify Output (Do not commit large graph outputs)
 graphify-out/
