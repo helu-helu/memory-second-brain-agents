@@ -2,7 +2,7 @@
 
 Dự án cung cấp một hệ thống "Bộ não thứ hai" tự host cho AI agent, kết hợp bộ nhớ dài hạn theo người dùng (Mem0) với kho tri thức tài liệu (LlamaIndex RAG). Một API FastAPI trung tâm phục vụ cả REST và cầu nối MCP, trong khi Qdrant lưu vector cục bộ.
 
-> **Phạm vi hiện tại:** đây là lớp memory + retrieval dùng chung cho nhiều client, không phải một agent runtime hoàn chỉnh. Dự án chưa quản lý vòng đời agent, thread/checkpoint thực thi hay quan hệ tri thức có hiệu lực theo thời gian.
+> **Phạm vi hiện tại:** đây là lớp memory + retrieval dùng chung cho nhiều client, không phải một agent runtime hoàn chỉnh. Phase 1 đã bổ sung vòng đời second-brain file-first: corpus registry, context packs, candidate extraction, review/activation, active memory recall, status/bootstrap và handoff records. Thread/checkpoint thực thi agent và UI production vẫn nằm ngoài MVP.
 
 ---
 

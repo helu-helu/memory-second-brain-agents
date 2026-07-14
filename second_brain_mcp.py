@@ -337,7 +337,9 @@ def ensure_api_running():
     # Not running, start it
     api_script = os.path.join(project_root, "api", "api_server.py")
     # Start process in background
-    subprocess.Popen([sys.executable, api_script], cwd=project_root)
+    env = os.environ.copy()
+    env.setdefault("SECOND_BRAIN_PRELOAD_KB", "0")
+    subprocess.Popen([sys.executable, api_script], cwd=project_root, env=env)
     # Wait briefly for it to start
     for _ in range(10):
         if is_port_in_use(8001):

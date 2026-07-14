@@ -124,8 +124,9 @@ def start_watchdog():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Pre-load knowledge base and start auto-sync watchdog
-    get_knowledge()
+    # Pre-load knowledge base unless a thin MCP client wants fast file-first startup.
+    if os.getenv("SECOND_BRAIN_PRELOAD_KB", "1") != "0":
+        get_knowledge()
     watchdog_thread = threading.Thread(target=start_watchdog, daemon=True)
     watchdog_thread.start()
     yield
