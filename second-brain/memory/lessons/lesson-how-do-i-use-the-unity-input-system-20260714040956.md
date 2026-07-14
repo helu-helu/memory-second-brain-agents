@@ -1,7 +1,7 @@
 ---
 id: lesson-how-do-i-use-the-unity-input-system-20260714040956
 title: 'Use evidence before answering: How do I use the Unity Input System?'
-status: candidate
+status: approved
 confidence: medium
 trigger: How do I use the Unity Input System?
 scope: agent_response_context
