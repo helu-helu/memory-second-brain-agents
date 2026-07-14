@@ -1,12 +1,21 @@
 import pytest
-from fastapi.testclient import TestClient
+import asyncio
+import httpx
 from unittest.mock import MagicMock
 
 from api.api_server import app, get_memory, get_knowledge, _memory_managers
 
-client = TestClient(app)
-
 headers = {"X-API-Key": "test_api_key"}
+
+
+async def _request(method: str, url: str, **kwargs):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        return await client.request(method, url, **kwargs)
+
+
+def request(method: str, url: str, **kwargs):
+    return asyncio.run(_request(method, url, **kwargs))
 
 def test_memory_managers_are_isolated_by_user():
     _memory_managers.clear()
@@ -19,7 +28,7 @@ def test_memory_managers_are_isolated_by_user():
     assert bob.user_id == "bob"
 
 def test_add_memory_auth_failure():
-    response = client.post("/memory/add", json={"text": "test memory"})
+    response = request("POST", "/memory/add", json={"text": "test memory"})
     assert response.status_code == 403
 
 def test_add_memory_success(mocker):
@@ -27,7 +36,8 @@ def test_add_memory_success(mocker):
     mock_mem.add.return_value = True
     get_memory = mocker.patch("api.api_server.get_memory", return_value=mock_mem)
     
-    response = client.post(
+    response = request(
+        "POST",
         "/memory/add", 
         json={"text": "I love testing", "user_id": "alice"},
         headers=headers
@@ -42,7 +52,8 @@ def test_search_memory_success(mocker):
     mock_mem.format_for_prompt.return_value = "- User prefers Python async coding."
     get_memory = mocker.patch("api.api_server.get_memory", return_value=mock_mem)
     
-    response = client.get(
+    response = request(
+        "GET",
         "/memory/search?q=what do I prefer?&user_id=alice",
         headers=headers
     )
@@ -55,7 +66,8 @@ def test_search_knowledge_success(mocker):
     mock_kb.search.return_value = "[Source: test.txt] Mock content"
     mocker.patch("api.api_server.get_knowledge", return_value=mock_kb)
     
-    response = client.get(
+    response = request(
+        "GET",
         "/rag/search?q=test file",
         headers=headers
     )
@@ -64,20 +76,21 @@ def test_search_knowledge_success(mocker):
 
 
 def test_second_brain_list_corpora():
-    response = client.get("/second-brain/corpora", headers=headers)
+    response = request("GET", "/second-brain/corpora", headers=headers)
     assert response.status_code == 200
     assert response.json()["ok"] is True
     assert any(item["corpus_id"] == "unity-6.3" for item in response.json()["data"])
 
 
 def test_second_brain_route_query():
-    response = client.get("/second-brain/route?q=How do I use the Unity Input System?", headers=headers)
+    response = request("GET", "/second-brain/route?q=How do I use the Unity Input System?", headers=headers)
     assert response.status_code == 200
     assert response.json()["data"]["selected_corpora"] == ["unity-6.3"]
 
 
 def test_second_brain_context_pack():
-    response = client.post(
+    response = request(
+        "POST",
         "/second-brain/context-pack",
         json={"query": "How do I use the Unity Input System?", "limit": 2, "out": "second-brain/demo/runs/api-context-pack.md"},
         headers=headers,
@@ -87,6 +100,17 @@ def test_second_brain_context_pack():
 
 
 def test_second_brain_corpus_status():
-    response = client.get("/second-brain/corpora/codex-docs/status", headers=headers)
+    response = request("GET", "/second-brain/corpora/codex-docs/status", headers=headers)
     assert response.status_code == 200
     assert response.json()["data"]["ready_for_retrieval"] is False
+
+
+def test_second_brain_memory_pack():
+    response = request(
+        "POST",
+        "/second-brain/memory-pack",
+        json={"query": "Unity Input System", "limit": 2, "out": "second-brain/memory/packs/api-memory-pack.md"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["applied_items"] <= 2

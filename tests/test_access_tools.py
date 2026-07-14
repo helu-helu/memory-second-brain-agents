@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agent_core.access_tools import build_docs_context_pack, inspect_corpus_status, list_corpora, response, route_docs_query
+from agent_core.access_tools import build_active_memory_pack, build_docs_context_pack, inspect_corpus_status, list_corpora, response, route_docs_query
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,3 +57,12 @@ def test_inspect_codex_corpus_status_reports_planned_state():
     assert result["data"]["ready_for_retrieval"] is False
     assert result["data"]["crawl_plans"]
     assert any("no local root_path" in warning for warning in result["warnings"])
+
+
+def test_build_active_memory_pack_writes_pack():
+    out = "second-brain/memory/packs/access-tool-memory.md"
+    result = build_active_memory_pack("Unity Input System", limit=3, out=out)
+    assert result["ok"]
+    assert result["data"]["path"] == out
+    assert result["data"]["applied_items"] <= 3
+    assert (ROOT / out).exists()

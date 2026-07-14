@@ -1,7 +1,7 @@
 ---
-id: context-pack-20260714044231
+id: context-pack-20260714045218
 query: How should Codex skills use MCP?
-created_at: '2026-07-14T04:42:31.527460+00:00'
+created_at: '2026-07-14T04:52:18.534290+00:00'
 client: codex
 corpus:
   selected:

@@ -8,6 +8,8 @@ from typing import Any
 import yaml
 
 from scripts.build_context_pack import build_pack, render_markdown
+from scripts.build_memory_pack import build_pack as build_memory_pack
+from scripts.build_memory_pack import render_markdown as render_memory_pack
 from scripts.route_query import REGISTRY, ROOT, load_yaml, route
 
 
@@ -102,5 +104,26 @@ def inspect_corpus_status(corpus_id: str) -> dict:
             },
             warnings=warnings,
         )
+    except Exception as exc:
+        return response(error=str(exc))
+
+
+def build_active_memory_pack(query: str, limit: int = 5, out: str | None = None) -> dict:
+    if not query.strip():
+        return response(error="query is required")
+    try:
+        limit = max(1, min(int(limit), 20))
+        out_path = Path(out) if out else ROOT / "second-brain" / "memory" / "packs" / "agent-memory-pack.md"
+        if not out_path.is_absolute():
+            out_path = ROOT / out_path
+        frontmatter, body = build_memory_pack(query, root=ROOT / "second-brain", limit=limit)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(render_memory_pack(frontmatter, body), encoding="utf-8")
+        data = {
+            "path": str(out_path.relative_to(ROOT)).replace("\\", "/"),
+            "applied_items": frontmatter["limits"]["applied_items"],
+            "quality": frontmatter["quality"],
+        }
+        return response(data, warnings=body["warnings"])
     except Exception as exc:
         return response(error=str(exc))

@@ -12,6 +12,7 @@ import threading
 import time
 import yaml
 import secrets
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Security, Depends, Query
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
@@ -30,7 +31,7 @@ if project_root not in sys.path:
 from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
 from agent_core.config import config, DOCS_DIR, SKILLS_DIR, MODEL_REGISTRY
-from agent_core.access_tools import build_docs_context_pack, inspect_corpus_status, list_corpora, route_docs_query
+from agent_core.access_tools import build_active_memory_pack, build_docs_context_pack, inspect_corpus_status, list_corpora, route_docs_query
 
 API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 API_KEY_NAME = config["app"]["api_key_name"]
@@ -40,12 +41,6 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
     if api_key_header and secrets.compare_digest(api_key_header, API_KEY):
         return api_key_header
     raise HTTPException(status_code=403, detail="Could not validate API Key")
-
-app = FastAPI(
-    title="Memory and Second Brain API",
-    description="Centralized Bridge for Multi-Agent Orchestration with Security & Auto-Sync",
-    version="2.0.0"
-)
 
 # Lazy initialization
 _memory_managers = {}
@@ -127,12 +122,21 @@ def start_watchdog():
         observer.stop()
     observer.join()
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     # Pre-load knowledge base and start auto-sync watchdog
     get_knowledge()
     watchdog_thread = threading.Thread(target=start_watchdog, daemon=True)
     watchdog_thread.start()
+    yield
+
+
+app = FastAPI(
+    title="Memory and Second Brain API",
+    description="Centralized Bridge for Multi-Agent Orchestration with Security & Auto-Sync",
+    version="2.0.0",
+    lifespan=lifespan,
+)
 
 @app.get("/ping")
 async def ping():
@@ -146,6 +150,11 @@ class ContextPackRequest(BaseModel):
     query: str
     limit: int = 12
     mode: str = "lexical"
+    out: Optional[str] = None
+
+class MemoryPackRequest(BaseModel):
+    query: str
+    limit: int = 5
     out: Optional[str] = None
 
 @app.get("/rag/search")
@@ -253,6 +262,13 @@ def second_brain_corpus_status(corpus_id: str, api_key: str = Depends(get_api_ke
     result = inspect_corpus_status(corpus_id)
     if not result["ok"]:
         raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+@app.post("/second-brain/memory-pack")
+def second_brain_memory_pack(req: MemoryPackRequest, api_key: str = Depends(get_api_key)):
+    result = build_active_memory_pack(req.query, limit=req.limit, out=req.out)
+    if not result["ok"]:
+        raise HTTPException(status_code=400, detail=result["error"])
     return result
 
 # --- Admin & MCP Tools Endpoints ---

@@ -266,6 +266,21 @@ def inspect_corpus_status(corpus_id: str) -> str:
     except Exception as e:
         return f"Error inspecting corpus status (Is API Server running?): {e}"
 
+@mcp.tool()
+def build_active_memory_pack(query: str, limit: int = 5) -> str:
+    """
+    Build a bounded active personal memory pack for the current task.
+    Use before answering when approved personal lessons or active skills may apply.
+    """
+    try:
+        payload = {"query": query, "limit": limit}
+        resp = api_session.post(f"{API_BASE}/second-brain/memory-pack", json=payload)
+        if resp.status_code == 200:
+            return str(resp.json())
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error building active memory pack (Is API Server running?): {e}"
+
 def ensure_api_running():
     import socket
     def is_port_in_use(port: int) -> bool:
