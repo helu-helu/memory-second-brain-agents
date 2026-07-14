@@ -238,7 +238,7 @@ def route_docs_query(query: str) -> str:
         return f"Error routing docs query (Is API Server running?): {e}"
 
 @mcp.tool()
-def build_docs_context_pack(query: str, limit: int = 12, mode: str = "lexical") -> str:
+def build_docs_context_pack(query: str, limit: int = 12, mode: str = "runtime") -> str:
     """
     Build a bounded context pack for Codex/agents from routed official docs.
     Does not live-scrape websites; uses local registered corpora only.
@@ -251,6 +251,26 @@ def build_docs_context_pack(query: str, limit: int = 12, mode: str = "lexical") 
         return f"API Error: {resp.status_code} - {resp.text}"
     except Exception as e:
         return f"Error building docs context pack (Is API Server running?): {e}"
+
+@mcp.tool()
+def build_unified_context(query: str, user_id: str = None, model_id: str = None) -> str:
+    """
+    Build unified runtime context from memory and knowledge through the API.
+    Use this when an agent needs the consolidated context contract, not just a
+    file-first audit pack.
+    """
+    try:
+        params = {"q": query}
+        if user_id:
+            params["user_id"] = user_id
+        if model_id:
+            params["model_id"] = model_id
+        resp = api_session.get(f"{API_BASE}/context/build", params=params)
+        if resp.status_code == 200:
+            return str(resp.json().get("context", {}))
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error building unified context (Is API Server running?): {e}"
 
 @mcp.tool()
 def inspect_corpus_status(corpus_id: str) -> str:
@@ -339,7 +359,13 @@ def ensure_api_running():
     # Start process in background
     env = os.environ.copy()
     env.setdefault("SECOND_BRAIN_PRELOAD_KB", "0")
-    subprocess.Popen([sys.executable, api_script], cwd=project_root, env=env)
+    subprocess.Popen(
+        [sys.executable, api_script],
+        cwd=project_root,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     # Wait briefly for it to start
     for _ in range(10):
         if is_port_in_use(8001):

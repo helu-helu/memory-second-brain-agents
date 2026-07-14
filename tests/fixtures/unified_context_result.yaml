@@ -1,0 +1,31 @@
+trace_id: trace-test-001
+query: "How do I use the Unity Input System?"
+route:
+  selected_corpora:
+    - unity-6.3
+  excluded_corpora:
+    - unity-6.5
+  route_confidence: high
+  clarification_needed: null
+selected_corpora:
+  - unity-6.3
+excluded_corpora:
+  - unity-6.5
+memory_hits:
+  - id: lesson-unity-input
+    source: second-brain/memory/lessons/lesson-how-do-i-use-the-unity-input-system.yaml
+    confidence: medium
+    text: "Prefer project-bound Unity docs before newer versions."
+knowledge_hits:
+  - id: unity-input-system-source
+    source: docs/massive/Unity_6_3_Markdown/en/Manual/Input.md
+    corpus_id: unity-6.3
+    score: 0.91
+    snippet: "Unity Input System documentation snippet."
+quality:
+  confidence: high
+  coverage: partial
+  retrieval_mode: vector
+warnings: []
+context_pack_path: second-brain/demo/runs/runtime-context-pack.md
+created_at: "2026-07-14T00:00:00Z"

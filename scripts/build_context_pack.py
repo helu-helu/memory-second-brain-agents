@@ -203,6 +203,60 @@ def build_pack(query: str, limit: int, mode: str = "lexical") -> tuple[dict, lis
     return frontmatter, [body]
 
 
+def build_pack_from_context_result(context: dict, limit: int = 12) -> tuple[dict, list[dict]]:
+    """Build an audit context pack from a unified runtime context result."""
+    applied_limit = max(1, min(int(limit), 20))
+    route_data = context.get("route") or {}
+    knowledge = context.get("knowledge_hits") or []
+    sources = []
+    for hit in knowledge[:applied_limit]:
+        score = hit.get("score")
+        vector_score = int(score * 100) if isinstance(score, (int, float)) else 0
+        sources.append(
+            {
+                "path": hit.get("source", "runtime"),
+                "corpus_id": hit.get("corpus_id", "unknown"),
+                "relevance": "high" if vector_score >= 80 else "medium",
+                "why": "Runtime-backed knowledge hit.",
+                "scores": {"path": 0, "phrase": 0, "symbol": 0, "vector": vector_score},
+                "snippet": hit.get("snippet", ""),
+            }
+        )
+
+    warnings = list(context.get("warnings") or [])
+    if not sources:
+        warnings.append("Runtime context returned no knowledge sources.")
+
+    frontmatter = {
+        "id": "context-pack-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+        "trace_id": context.get("trace_id"),
+        "query": context.get("query", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "client": "codex",
+        "corpus": {
+            "selected": context.get("selected_corpora", []),
+            "excluded": context.get("excluded_corpora", []),
+            "route_reason": route_data.get("clarification_needed") or "Route selected by unified runtime.",
+        },
+        "limits": {"requested_sources": limit, "applied_sources": len(sources)},
+        "retrieval": {
+            "mode": "runtime",
+            "requested_mode": "runtime",
+            "lexical_enabled": True,
+            "vector_enabled": context.get("quality", {}).get("retrieval_mode") != "lexical",
+        },
+        "quality": context.get("quality", {"confidence": "low", "coverage": "none"}),
+        "status": "generated",
+    }
+    body = {
+        "route": route_data,
+        "sources": sources,
+        "memory_hits": context.get("memory_hits", []),
+        "warnings": warnings,
+    }
+    return frontmatter, [body]
+
+
 def render_markdown(frontmatter: dict, body: list[dict]) -> str:
     data = body[0]
     lines = [
@@ -236,6 +290,19 @@ def render_markdown(frontmatter: dict, body: list[dict]) -> str:
                 "",
             ]
         )
+    if data.get("memory_hits"):
+        lines.extend(["## Memory Hits", ""])
+        for idx, hit in enumerate(data["memory_hits"], 1):
+            lines.extend(
+                [
+                    f"### {idx}. {hit.get('id', 'memory')}",
+                    "",
+                    f"- Source: {hit.get('source', 'unknown')}",
+                    f"- Confidence: {hit.get('confidence', 'unknown')}",
+                    f"- Text: {hit.get('text', '')}",
+                    "",
+                ]
+            )
     lines.extend(["## Retrieval Warnings", ""])
     lines.extend(f"- {warning}" for warning in data["warnings"]) if data["warnings"] else lines.append("None.")
     return "\n".join(lines) + "\n"

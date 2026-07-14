@@ -75,6 +75,25 @@ def test_search_knowledge_success(mocker):
     assert "[Source: test.txt]" in response.json()["result"]
 
 
+def test_context_build_returns_prompt_and_unified_context(mocker):
+    mock_mem = MagicMock()
+    mock_mem.search.return_value = [{"memory": "User prefers project-bound docs."}]
+    mock_mem.format_for_prompt.return_value = "- User prefers project-bound docs."
+    mock_kb = MagicMock()
+    mock_kb.search.return_value = "[Source: unity.md]\nUnity docs"
+    mocker.patch("api.api_server.get_memory", return_value=mock_mem)
+    mocker.patch("api.api_server.get_knowledge", return_value=mock_kb)
+
+    response = request("GET", "/context/build?q=Unity Input System&user_id=alice", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "prompt" in data
+    assert data["context"]["query"] == "Unity Input System"
+    assert data["context"]["memory_hits"]
+    assert data["context"]["knowledge_hits"][0]["source"] == "unity.md"
+
+
 def test_second_brain_list_corpora():
     response = request("GET", "/second-brain/corpora", headers=headers)
     assert response.status_code == 200
@@ -93,11 +112,33 @@ def test_second_brain_context_pack(tmp_path):
     response = request(
         "POST",
         "/second-brain/context-pack",
-        json={"query": "How do I use the Unity Input System?", "limit": 2, "out": str(out)},
+        json={"query": "How do I use the Unity Input System?", "limit": 2, "mode": "lexical", "out": str(out)},
         headers=headers,
     )
     assert response.status_code == 200
     assert response.json()["data"]["applied_sources"] <= 2
+
+
+def test_second_brain_context_pack_runtime_mode(mocker, tmp_path):
+    out = tmp_path / "runtime-context-pack.md"
+    mock_mem = MagicMock()
+    mock_mem.search.return_value = [{"memory": "Use project-bound Unity docs."}]
+    mock_mem.format_for_prompt.return_value = "- Use project-bound Unity docs."
+    mock_kb = MagicMock()
+    mock_kb.search.return_value = "[Source: unity.md]\nUnity docs"
+    mocker.patch("api.api_server.get_memory", return_value=mock_mem)
+    mocker.patch("api.api_server.get_knowledge", return_value=mock_kb)
+
+    response = request(
+        "POST",
+        "/second-brain/context-pack",
+        json={"query": "How do I use the Unity Input System?", "limit": 2, "mode": "runtime", "out": str(out)},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["retrieval_mode"] == "runtime"
+    assert out.exists()
 
 
 def test_second_brain_corpus_status():

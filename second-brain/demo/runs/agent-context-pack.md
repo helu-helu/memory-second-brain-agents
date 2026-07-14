@@ -1,25 +1,26 @@
 ---
-id: context-pack-20260714053942
-query: How should Codex skills use MCP?
-created_at: '2026-07-14T05:39:42.072303+00:00'
+id: context-pack-20260714125623
+query: How do I use the Unity Input System?
+created_at: '2026-07-14T12:56:23.007951+00:00'
 client: codex
 corpus:
   selected:
-  - codex-docs
-  excluded: []
+  - unity-6.3
+  excluded:
+  - unity-6.5
   route_reason: Route selected by query router.
 limits:
-  requested_sources: 5
-  applied_sources: 0
+  requested_sources: 2
+  applied_sources: 2
 retrieval:
   mode: lexical
   requested_mode: lexical
   lexical_enabled: true
   vector_enabled: false
 quality:
-  confidence: low
+  confidence: medium
   ambiguity: low
-  coverage: none
+  coverage: partial
 status: generated
 ---
 
@@ -28,19 +29,41 @@ status: generated
 ## Query Route
 
 ```yaml
-query: How should Codex skills use MCP?
-detected_category: agent_platforms
-detected_product: Codex
+query: How do I use the Unity Input System?
+detected_category: engines
+detected_product: Unity
 selected_corpora:
-- codex-docs
-excluded_corpora: []
+- unity-6.3
+excluded_corpora:
+- unity-6.5
 route_confidence: high
 clarification_needed: null
 ```
 
 ## Ranked Sources
 
-No local sources found for the selected corpus.
+### 1. docs/massive/Unity_6_3_Markdown/en/Manual/IMEInput.md
+
+- Corpus: unity-6.3
+- Relevance: high
+- Why selected: Matched path, symbol.
+- Scores: path: 4
+phrase: 0
+symbol: 12
+vector: 0
+- Snippet: Input](Input.html) * IME in Unity Mobile device input UI systems # IME in Unity ## What is Input Method Editor (IME)? An input method is an operating system component or program that allows users to enter characters and symbols not found on their input device. For instance, on the computer, this allows the user of ‘Western’ keyboards to input Chinese, J
+
+### 2. docs/massive/Unity_6_3_Markdown/en/Manual/Input.md
+
+- Corpus: unity-6.3
+- Relevance: high
+- Why selected: Matched path, symbol.
+- Scores: path: 4
+phrase: 0
+symbol: 12
+vector: 0
+- Snippet: Input Disable and strip the physics integration from your project Introduction to Input # Input Unity supports input from many types of devices, and almost every project requires input of some kind, whether it is to allow users to navigate a UI, control a character in a game, or move around and interact with objects in **virtual reality**Virtual Reality
+
 ## Retrieval Warnings
 
-- codex-docs has no local root_path yet.
+None.

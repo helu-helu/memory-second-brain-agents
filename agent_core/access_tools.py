@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from scripts.build_context_pack import build_pack, render_markdown
+from scripts.build_context_pack import build_pack, build_pack_from_context_result, render_markdown
 from scripts.build_memory_pack import build_pack as build_memory_pack
 from scripts.build_memory_pack import render_markdown as render_memory_pack
 from scripts.record_handoff import record_handoff
@@ -76,7 +76,7 @@ def route_docs_query(query: str) -> dict:
         return response(error=str(exc))
 
 
-def build_docs_context_pack(query: str, limit: int = 12, mode: str = "lexical", out: str | None = None) -> dict:
+def build_docs_context_pack(query: str, limit: int = 12, mode: str = "lexical", out: str | None = None, context_result: dict | None = None) -> dict:
     if not query.strip():
         return response(error="query is required")
     try:
@@ -84,7 +84,10 @@ def build_docs_context_pack(query: str, limit: int = 12, mode: str = "lexical", 
         out_path = Path(out) if out else ROOT / "second-brain" / "demo" / "runs" / "agent-context-pack.md"
         if not out_path.is_absolute():
             out_path = ROOT / out_path
-        frontmatter, body = build_pack(query, limit, mode=mode)
+        if context_result is not None:
+            frontmatter, body = build_pack_from_context_result(context_result, limit=limit)
+        else:
+            frontmatter, body = build_pack(query, limit, mode=mode)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(render_markdown(frontmatter, body), encoding="utf-8")
         data = {

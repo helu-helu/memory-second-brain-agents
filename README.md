@@ -4,6 +4,13 @@ Dự án cung cấp một hệ thống "Bộ não thứ hai" tự host cho AI ag
 
 > **Phạm vi hiện tại:** đây là lớp memory + retrieval dùng chung cho nhiều client, không phải một agent runtime hoàn chỉnh. Phase 1 đã bổ sung vòng đời second-brain file-first: corpus registry, context packs, candidate extraction, review/activation, active memory recall, status/bootstrap và handoff records. Thread/checkpoint thực thi agent và UI production vẫn nằm ngoài MVP.
 
+> **Phase 2 consolidation:** runtime source of truth is `agent_core` (Mem0 memory,
+> LlamaIndex/Qdrant knowledge retrieval, context builder, model routing). The
+> `second-brain/` folder is the file-first workspace for corpus metadata, review
+> lifecycle, skills, handoffs, and audit snapshots. Context packs should become
+> runtime-backed exports; lexical file scanning is fallback/audit behavior, not
+> the production retrieval engine.
+
 ---
 
 ## 💡 Triết Lý Thiết Kế: "API là Tiền Đề" (API-First Approach)
@@ -62,6 +69,8 @@ Memory and Second Brain for Agents/
 ├── second_brain_mcp.py         ← MCP Server cho các AI IDE (Antigravity, Roo Code)
 ├── dashboard.py                ← Giao diện quản lý Ký ức & RAG (Streamlit)
 ├── agent_core/                 ← Code xử lý logic cốt lõi (MemoryManager, KnowledgeBase)
+├── second-brain/               ← Workspace file-first: corpus registry, review, skills, audit snapshots
+├── specs/                      ← Spec-kit plans, including runtime consolidation feature 013
 ├── db/                         ← Manifest/checkpoint ingestion; vector data nằm trong Docker volume
 ├── compose.yaml                ← Qdrant 1.18.2, localhost-only, persistent named volume
 ├── docs/                       ← Thư mục chứa tài liệu RAG. Có cơ chế Auto-Sync Watchdog
@@ -162,7 +171,7 @@ Sau khi cấu hình MCP, Agent đã được "kết nối não". Bạn cứ chat
 
 ### Vị trí phù hợp của dự án
 
-Dự án phù hợp nhất khi cần một **dịch vụ second-brain tự host, local-first, dùng chung qua REST/MCP**, tách khỏi runtime của agent. Thiết kế hiện tại ưu tiên vận hành đơn giản: Mem0 cho ký ức cá nhân, LlamaIndex + Qdrant cho tài liệu, Watchdog cho cập nhật nhỏ và pipeline manifest cho corpus lớn.
+Dự án phù hợp nhất khi cần một **dịch vụ second-brain tự host, local-first, dùng chung qua REST/MCP**, tách khỏi runtime thực thi workflow của agent nhưng không tách khỏi runtime memory/RAG nội bộ. Thiết kế hiện tại ưu tiên vận hành đơn giản: `agent_core` là runtime cho Mem0, LlamaIndex, Qdrant và context builder; `second-brain/` là workspace kiểm toán/file-first cho metadata, review, skills và snapshots.
 
 ### Khoảng trống đã xác định
 

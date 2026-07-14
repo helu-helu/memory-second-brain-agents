@@ -1,0 +1,140 @@
+cases:
+  - id: unity-input-system
+    query: "How do I use the Unity Input System?"
+    expected_route: unity-6.3
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "route to project-bound Unity docs and return bounded source context"
+
+  - id: unity-camera-multiplayer-vi
+    query: "Tôi muốn tạo camera riêng cho từng user trong cơ chế game Multiplayer của Unity 6.3"
+    expected_route: unity-6.3
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "route Vietnamese Unity query to Unity 6.3 without noisy unrelated path matches"
+
+  - id: unity-urp
+    query: "How should I configure URP in this Unity project?"
+    expected_route: unity-6.3
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "prefer Unity 6.3 project-bound rendering docs"
+
+  - id: unity-monobehaviour
+    query: "How do GameObject and MonoBehaviour lifecycle methods work?"
+    expected_route: unity-6.3
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "return Unity lifecycle sources"
+
+  - id: unity-build-pipeline
+    query: "How do I configure the Unity build pipeline?"
+    expected_route: unity-6.3
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "return Unity build pipeline sources"
+
+  - id: unity-version-ambiguous
+    query: "How does multiplayer setup differ between Unity 6.3 and Unity 6.5?"
+    expected_route: clarification
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "surface version ambiguity or include selected/excluded corpora explicitly"
+
+  - id: codex-mcp
+    query: "How should Codex skills use MCP?"
+    expected_route: codex-docs
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "route to Codex/OpenAI docs or report missing local corpus explicitly"
+
+  - id: python-typing
+    query: "How should I type a Python context contract?"
+    expected_route: python-docs
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "route to Python docs when registered, otherwise warn planned/missing corpus"
+
+  - id: typescript-agent-sdk
+    query: "How should a TypeScript client call this MCP server?"
+    expected_route: typescript-docs
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "route to TypeScript docs when registered, otherwise warn planned/missing corpus"
+
+  - id: personal-preference
+    query: "What retrieval and test policy did I choose for this project?"
+    expected_route: project-memory
+    expects_memory: true
+    expects_knowledge: optional
+    expected_behavior: "prefer approved project/user memory over generic docs"
+
+  - id: active-skill
+    query: "Which active skill should guide a codebase architecture question?"
+    expected_route: active-skills
+    expects_memory: true
+    expects_knowledge: optional
+    expected_behavior: "return active skill or memory references with provenance"
+
+  - id: workflow-search
+    query: "Do we have a verified workflow for building a massive docs index?"
+    expected_route: workflows
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "search verified workflows through runtime-backed knowledge"
+
+  - id: handoff-search
+    query: "What did the previous agent finish in the MCP setup task?"
+    expected_route: handoffs
+    expects_memory: true
+    expects_knowledge: optional
+    expected_behavior: "return handoff evidence if present"
+
+  - id: missing-qdrant
+    query: "Search Unity camera docs when Qdrant is unavailable"
+    expected_route: unity-6.3
+    expects_memory: optional
+    expects_knowledge: degraded
+    expected_behavior: "return explicit degraded warning and no unrelated fallback sources"
+
+  - id: missing-memory
+    query: "What do you remember about my preferred project structure?"
+    expected_route: project-memory
+    expects_memory: degraded
+    expects_knowledge: optional
+    expected_behavior: "return explicit memory unavailable warning"
+
+  - id: empty-query
+    query: ""
+    expected_route: validation-error
+    expects_memory: false
+    expects_knowledge: false
+    expected_behavior: "reject empty query"
+
+  - id: no-results
+    query: "Find docs for a deliberately nonexistent subsystem xyzzy-plugh"
+    expected_route: unknown
+    expects_memory: optional
+    expects_knowledge: false
+    expected_behavior: "return no-results warning without fabricated sources"
+
+  - id: model-capability-standard
+    query: "Build context for a standard model without complex planning"
+    expected_route: model-registry
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "apply model capability filters consistently"
+
+  - id: model-capability-reasoning
+    query: "Build context for a reasoning model with complex planning"
+    expected_route: model-registry
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "include sources requiring reasoning capability"
+
+  - id: context-pack-export
+    query: "Export a bounded context pack for Unity Input System"
+    expected_route: unity-6.3
+    expects_memory: optional
+    expects_knowledge: true
+    expected_behavior: "export snapshot from runtime-backed result"

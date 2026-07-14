@@ -25,6 +25,10 @@ Further work should not be implemented automatically just because another
 
 ## Phase 2 Backlog
 
+- Runtime consolidation: make `agent_core` the source of truth for memory,
+  knowledge retrieval, context building, and model routing; keep `second-brain/`
+  as the file-first data/audit/spec workspace; replace duplicate lexical/manual
+  production retrieval with runtime-backed context-pack export.
 - Production crawler hardening: resumable crawl state, robots/rate policy,
   retries, canonical URL handling, and checksum refresh.
 - Vector search: embedding provider selection, index storage, rebuild strategy,
@@ -39,6 +43,7 @@ Further work should not be implemented automatically just because another
 
 ## Default Next Action
 
-If the user says "continue" after Phase 1, default to hardening, cleanup,
-documentation, tests, or release preparation. Do not create a new feature unless
-the user explicitly chooses a Phase 2 backlog item.
+If the user says "continue" after Phase 1, the selected Phase 2 track is now
+runtime consolidation through `specs/013-unify-agent-runtime/`. Do not add new
+product capabilities until the source-of-truth map and unified context contract
+are stable.

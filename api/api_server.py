@@ -150,7 +150,7 @@ class MemoryAddRequest(BaseModel):
 class ContextPackRequest(BaseModel):
     query: str
     limit: int = 12
-    mode: str = "lexical"
+    mode: str = "runtime"
     out: Optional[str] = None
 
 class MemoryPackRequest(BaseModel):
@@ -245,8 +245,8 @@ async def context_build(q: str, user_id: Optional[str] = None, model_id: str = N
                     break
         
         # Gọi song song để giảm nửa thời gian chờ
-        prompt = await ctx_builder.build_async(q, requires=requires)
-        return {"prompt": prompt}
+        context = await ctx_builder.build_result_async(q, requires=requires)
+        return {"prompt": context["prompt_context"], "context": context}
     except Exception as e:
         print(f"[Error] /context/build: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -266,8 +266,14 @@ def second_brain_route_query(q: str, api_key: str = Depends(get_api_key)):
     return result
 
 @app.post("/second-brain/context-pack")
-def second_brain_context_pack(req: ContextPackRequest, api_key: str = Depends(get_api_key)):
-    result = build_docs_context_pack(req.query, limit=req.limit, mode=req.mode, out=req.out)
+async def second_brain_context_pack(req: ContextPackRequest, api_key: str = Depends(get_api_key)):
+    context_result = None
+    if req.mode in {"runtime", "hybrid", "vector"}:
+        from agent_core.context_builder import ContextBuilder
+
+        ctx_builder = ContextBuilder(memory=get_memory(), knowledge=get_knowledge())
+        context_result = await ctx_builder.build_result_async(req.query)
+    result = build_docs_context_pack(req.query, limit=req.limit, mode=req.mode, out=req.out, context_result=context_result)
     if not result["ok"]:
         raise HTTPException(status_code=400, detail=result["error"])
     return result

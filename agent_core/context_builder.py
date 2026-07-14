@@ -8,6 +8,7 @@ Kết quả được chèn vào System Prompt trước mỗi lần gọi LLM.
 
 from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
+from agent_core.context_contract import build_unified_context_result
 
 SYSTEM_PROMPT_TEMPLATE = """\
 Bạn là một AI Agent cá nhân thông minh và hữu ích.
@@ -46,19 +47,30 @@ class ContextBuilder:
         Tạo System Prompt hoàn chỉnh bằng cách chạy Song Song (Parallel)
         tìm kiếm trên cả RAG và Mem0. Tăng tốc độ gấp đôi.
         """
+        result = await self.build_result_async(user_query, requires=requires)
+        return result["prompt_context"]
+
+    async def build_result_async(self, user_query: str, requires: dict = None, route: dict | None = None) -> dict:
+        """Build prompt context plus a structured runtime result for API/MCP callers."""
         import asyncio
         
         # Chạy 2 hàm search blocking trong các thread riêng biệt cùng lúc
         memories_task = asyncio.to_thread(self.memory.search, user_query, limit=5)
         knowledge_task = asyncio.to_thread(self.knowledge.search, user_query, top_k=3, tags=None, requires=requires)
 
-        
         memories, knowledge_text = await asyncio.gather(memories_task, knowledge_task)
         memory_text = self.memory.format_for_prompt(memories)
 
-        return SYSTEM_PROMPT_TEMPLATE.format(
+        prompt = SYSTEM_PROMPT_TEMPLATE.format(
             memories=memory_text,
             knowledge=knowledge_text
+        )
+        return build_unified_context_result(
+            query=user_query,
+            route=route,
+            memories=memories,
+            knowledge_text=knowledge_text,
+            prompt_context=prompt,
         )
 
     def save_interaction(self, user_message: str, agent_response: str):
