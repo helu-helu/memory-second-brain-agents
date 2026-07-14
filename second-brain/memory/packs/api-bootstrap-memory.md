@@ -1,7 +1,7 @@
 ---
 id: memory-pack-20260714053942
-query: Unity Input System
-created_at: '2026-07-14T05:39:42.874560+00:00'
+query: How do I use the Unity Input System?
+created_at: '2026-07-14T05:39:42.904797+00:00'
 client: codex
 limits:
   requested_items: 2
@@ -25,7 +25,7 @@ status: generated
 - status: active
 - Confidence: medium
 - Trigger: How do I use the Unity Input System?
-- Reason: Matched 3 query term(s).
+- Reason: Matched 4 query term(s).
 - Summary: Use the cited evidence paths as bounded context before answering similar tasks.
 
 ## Recall Warnings

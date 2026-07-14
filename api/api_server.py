@@ -31,7 +31,7 @@ if project_root not in sys.path:
 from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
 from agent_core.config import config, DOCS_DIR, SKILLS_DIR, MODEL_REGISTRY
-from agent_core.access_tools import build_active_memory_pack, build_docs_context_pack, inspect_corpus_status, inspect_second_brain_status, list_corpora, route_docs_query
+from agent_core.access_tools import build_active_memory_pack, build_agent_bootstrap, build_docs_context_pack, inspect_corpus_status, inspect_second_brain_status, list_corpora, record_agent_handoff, route_docs_query
 
 API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 API_KEY_NAME = config["app"]["api_key_name"]
@@ -157,6 +157,20 @@ class MemoryPackRequest(BaseModel):
     limit: int = 5
     out: Optional[str] = None
 
+class BootstrapRequest(BaseModel):
+    query: str
+    memory_limit: int = 5
+    out: Optional[str] = None
+
+class HandoffRequest(BaseModel):
+    title: str
+    summary: str
+    status: str = "completed"
+    agent: str = "codex"
+    files: List[str] = []
+    decisions: List[str] = []
+    followups: List[str] = []
+
 @app.get("/rag/search")
 def rag_search(q: str, tags: list[str] = Query(None), requires_tier: str = None, requires_features: list[str] = Query(None), api_key: str = Depends(get_api_key)):
     """Search static RAG documents."""
@@ -276,6 +290,28 @@ def second_brain_status(api_key: str = Depends(get_api_key)):
     result = inspect_second_brain_status()
     if not result["ok"]:
         raise HTTPException(status_code=500, detail=result["error"])
+    return result
+
+@app.post("/second-brain/bootstrap")
+def second_brain_bootstrap(req: BootstrapRequest, api_key: str = Depends(get_api_key)):
+    result = build_agent_bootstrap(req.query, memory_limit=req.memory_limit, out=req.out)
+    if not result["ok"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+@app.post("/second-brain/handoff")
+def second_brain_handoff(req: HandoffRequest, api_key: str = Depends(get_api_key)):
+    result = record_agent_handoff(
+        req.title,
+        req.summary,
+        status=req.status,
+        agent=req.agent,
+        files=req.files,
+        decisions=req.decisions,
+        followups=req.followups,
+    )
+    if not result["ok"]:
+        raise HTTPException(status_code=400, detail=result["error"])
     return result
 
 # --- Admin & MCP Tools Endpoints ---

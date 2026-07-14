@@ -10,6 +10,7 @@ import yaml
 from scripts.build_context_pack import build_pack, render_markdown
 from scripts.build_memory_pack import build_pack as build_memory_pack
 from scripts.build_memory_pack import render_markdown as render_memory_pack
+from scripts.record_handoff import record_handoff
 from scripts.review_candidate import list_artifacts
 from scripts.route_query import REGISTRY, ROOT, load_yaml, route
 
@@ -177,5 +178,56 @@ def inspect_second_brain_status() -> dict:
         if not data["memory"]["by_status"].get("active", 0) and not data["memory"]["active_skills"]:
             warnings.append("No active personal memory is available for recall.")
         return response(data, warnings=warnings)
+    except Exception as exc:
+        return response(error=str(exc))
+
+
+def build_agent_bootstrap(query: str, memory_limit: int = 5, out: str | None = None) -> dict:
+    if not query.strip():
+        return response(error="query is required")
+    memory = build_active_memory_pack(query, limit=memory_limit, out=out)
+    status = inspect_second_brain_status()
+    docs_route = route_docs_query(query)
+    if not memory["ok"]:
+        return memory
+    if not status["ok"]:
+        return status
+    warnings = []
+    warnings.extend(memory["warnings"])
+    warnings.extend(status["warnings"])
+    if not docs_route["ok"]:
+        warnings.append(f"Docs route unavailable: {docs_route['error']}")
+    return response(
+        {
+            "query": query,
+            "memory_pack": memory["data"],
+            "status": status["data"],
+            "docs_route": docs_route["data"] if docs_route["ok"] else None,
+        },
+        warnings=warnings,
+    )
+
+
+def record_agent_handoff(
+    title: str,
+    summary: str,
+    status: str = "completed",
+    agent: str = "codex",
+    files: list[str] | None = None,
+    decisions: list[str] | None = None,
+    followups: list[str] | None = None,
+) -> dict:
+    try:
+        out = record_handoff(
+            title,
+            summary,
+            out_root=ROOT / "second-brain",
+            status=status,
+            agent=agent,
+            files=files,
+            decisions=decisions,
+            followups=followups,
+        )
+        return response({"path": str(out.relative_to(ROOT)).replace("\\", "/"), "status": status})
     except Exception as exc:
         return response(error=str(exc))

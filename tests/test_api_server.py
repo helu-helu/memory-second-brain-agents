@@ -123,3 +123,33 @@ def test_second_brain_status():
     assert "memory" in data
     assert "reviews" in data
     assert "corpora" in data
+
+
+def test_second_brain_bootstrap():
+    response = request(
+        "POST",
+        "/second-brain/bootstrap",
+        json={"query": "How do I use the Unity Input System?", "memory_limit": 2, "out": "second-brain/memory/packs/api-bootstrap-memory.md"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "memory_pack" in data
+    assert "status" in data
+    assert data["docs_route"]["selected_corpora"] == ["unity-6.3"]
+
+
+def test_second_brain_handoff():
+    response = request(
+        "POST",
+        "/second-brain/handoff",
+        json={
+            "title": "API handoff",
+            "summary": "Recorded through the API.",
+            "files": ["api/api_server.py"],
+            "decisions": ["Expose handoff endpoint."],
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["path"].startswith("second-brain/memory/handoffs/")

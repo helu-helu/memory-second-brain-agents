@@ -295,6 +295,36 @@ def inspect_second_brain_status() -> str:
     except Exception as e:
         return f"Error inspecting second-brain status (Is API Server running?): {e}"
 
+@mcp.tool()
+def build_agent_bootstrap(query: str, memory_limit: int = 5) -> str:
+    """
+    Build a compact startup context for a new agent task: lifecycle status,
+    active memory pack metadata, and docs routing hint.
+    """
+    try:
+        payload = {"query": query, "memory_limit": memory_limit}
+        resp = api_session.post(f"{API_BASE}/second-brain/bootstrap", json=payload)
+        if resp.status_code == 200:
+            return str(resp.json())
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error building agent bootstrap (Is API Server running?): {e}"
+
+@mcp.tool()
+def record_agent_handoff(title: str, summary: str, status: str = "completed", agent: str = "codex") -> str:
+    """
+    Record a compact end-of-task handoff for future extraction/review.
+    Use when an agent finishes meaningful work and should leave evidence.
+    """
+    try:
+        payload = {"title": title, "summary": summary, "status": status, "agent": agent}
+        resp = api_session.post(f"{API_BASE}/second-brain/handoff", json=payload)
+        if resp.status_code == 200:
+            return str(resp.json())
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error recording agent handoff (Is API Server running?): {e}"
+
 def ensure_api_running():
     import socket
     def is_port_in_use(port: int) -> bool:

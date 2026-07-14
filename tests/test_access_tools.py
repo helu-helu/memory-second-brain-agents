@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agent_core.access_tools import build_active_memory_pack, build_docs_context_pack, inspect_corpus_status, inspect_second_brain_status, list_corpora, response, route_docs_query
+from agent_core.access_tools import build_active_memory_pack, build_agent_bootstrap, build_docs_context_pack, inspect_corpus_status, inspect_second_brain_status, list_corpora, record_agent_handoff, response, route_docs_query
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,3 +75,26 @@ def test_inspect_second_brain_status_returns_lifecycle_summary():
     assert "reviews" in result["data"]
     assert "corpora" in result["data"]
     assert "by_status" in result["data"]["memory"]
+
+
+def test_build_agent_bootstrap_returns_status_memory_and_route():
+    out = "second-brain/memory/packs/bootstrap-memory.md"
+    result = build_agent_bootstrap("How do I use the Unity Input System?", memory_limit=2, out=out)
+    assert result["ok"]
+    assert result["data"]["memory_pack"]["path"] == out
+    assert "status" in result["data"]
+    assert result["data"]["docs_route"]["selected_corpora"] == ["unity-6.3"]
+    assert (ROOT / out).exists()
+
+
+def test_record_agent_handoff_writes_file():
+    result = record_agent_handoff(
+        "Test handoff",
+        "Completed a small test handoff.",
+        files=["agent_core/access_tools.py"],
+        decisions=["Keep handoffs file-first."],
+    )
+    assert result["ok"]
+    path = ROOT / result["data"]["path"]
+    assert path.exists()
+    assert "Completed a small test handoff." in path.read_text(encoding="utf-8")
