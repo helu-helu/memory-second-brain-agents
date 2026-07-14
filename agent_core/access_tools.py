@@ -48,6 +48,13 @@ def _count_by(items: list[dict], key: str) -> dict[str, int]:
     return counts
 
 
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT)).replace("\\", "/")
+    except ValueError:
+        return str(path).replace("\\", "/")
+
+
 def list_corpora(status: str | None = None, product: str | None = None) -> dict:
     try:
         corpora = load_yaml(REGISTRY).get("corpora", [])
@@ -81,7 +88,7 @@ def build_docs_context_pack(query: str, limit: int = 12, mode: str = "lexical", 
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(render_markdown(frontmatter, body), encoding="utf-8")
         data = {
-            "path": str(out_path.relative_to(ROOT)).replace("\\", "/"),
+            "path": _display_path(out_path),
             "selected_corpora": frontmatter["corpus"]["selected"],
             "applied_sources": frontmatter["limits"]["applied_sources"],
             "retrieval_mode": frontmatter["retrieval"]["mode"],
@@ -137,7 +144,7 @@ def build_active_memory_pack(query: str, limit: int = 5, out: str | None = None)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(render_memory_pack(frontmatter, body), encoding="utf-8")
         data = {
-            "path": str(out_path.relative_to(ROOT)).replace("\\", "/"),
+            "path": _display_path(out_path),
             "applied_items": frontmatter["limits"]["applied_items"],
             "quality": frontmatter["quality"],
         }
@@ -228,6 +235,6 @@ def record_agent_handoff(
             decisions=decisions,
             followups=followups,
         )
-        return response({"path": str(out.relative_to(ROOT)).replace("\\", "/"), "status": status})
+        return response({"path": _display_path(out), "status": status})
     except Exception as exc:
         return response(error=str(exc))

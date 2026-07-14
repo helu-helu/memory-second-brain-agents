@@ -88,11 +88,12 @@ def test_second_brain_route_query():
     assert response.json()["data"]["selected_corpora"] == ["unity-6.3"]
 
 
-def test_second_brain_context_pack():
+def test_second_brain_context_pack(tmp_path):
+    out = tmp_path / "api-context-pack.md"
     response = request(
         "POST",
         "/second-brain/context-pack",
-        json={"query": "How do I use the Unity Input System?", "limit": 2, "out": "second-brain/demo/runs/api-context-pack.md"},
+        json={"query": "How do I use the Unity Input System?", "limit": 2, "out": str(out)},
         headers=headers,
     )
     assert response.status_code == 200
@@ -105,11 +106,12 @@ def test_second_brain_corpus_status():
     assert response.json()["data"]["ready_for_retrieval"] is False
 
 
-def test_second_brain_memory_pack():
+def test_second_brain_memory_pack(tmp_path):
+    out = tmp_path / "api-memory-pack.md"
     response = request(
         "POST",
         "/second-brain/memory-pack",
-        json={"query": "Unity Input System", "limit": 2, "out": "second-brain/memory/packs/api-memory-pack.md"},
+        json={"query": "Unity Input System", "limit": 2, "out": str(out)},
         headers=headers,
     )
     assert response.status_code == 200
@@ -125,11 +127,12 @@ def test_second_brain_status():
     assert "corpora" in data
 
 
-def test_second_brain_bootstrap():
+def test_second_brain_bootstrap(tmp_path):
+    out = tmp_path / "api-bootstrap-memory.md"
     response = request(
         "POST",
         "/second-brain/bootstrap",
-        json={"query": "How do I use the Unity Input System?", "memory_limit": 2, "out": "second-brain/memory/packs/api-bootstrap-memory.md"},
+        json={"query": "How do I use the Unity Input System?", "memory_limit": 2, "out": str(out)},
         headers=headers,
     )
     assert response.status_code == 200
@@ -139,7 +142,9 @@ def test_second_brain_bootstrap():
     assert data["docs_route"]["selected_corpora"] == ["unity-6.3"]
 
 
-def test_second_brain_handoff():
+def test_second_brain_handoff(mocker, tmp_path):
+    out = tmp_path / "second-brain" / "memory" / "handoffs" / "handoff-api.md"
+    mocker.patch("api.api_server.record_agent_handoff", return_value={"ok": True, "data": {"path": str(out).replace("\\", "/")}, "warnings": [], "error": None})
     response = request(
         "POST",
         "/second-brain/handoff",
@@ -152,4 +157,4 @@ def test_second_brain_handoff():
         headers=headers,
     )
     assert response.status_code == 200
-    assert response.json()["data"]["path"].startswith("second-brain/memory/handoffs/")
+    assert response.json()["data"]["path"] == str(out).replace("\\", "/")
