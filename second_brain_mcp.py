@@ -205,6 +205,67 @@ def open_dashboard() -> str:
     except Exception as e:
         return f"Error opening dashboard (Is API Server running?): {e}"
 
+@mcp.tool()
+def list_corpora(status: str = None, product: str = None) -> str:
+    """
+    List registered official documentation corpora from the file-first second-brain registry.
+    Use before routing or retrieval when the agent needs to know available docs versions.
+    """
+    try:
+        params = {}
+        if status:
+            params["status"] = status
+        if product:
+            params["product"] = product
+        resp = api_session.get(f"{API_BASE}/second-brain/corpora", params=params)
+        if resp.status_code == 200:
+            return str(resp.json().get("data", []))
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error listing corpora (Is API Server running?): {e}"
+
+@mcp.tool()
+def route_docs_query(query: str) -> str:
+    """
+    Route a documentation query to the correct registered corpus/version before retrieval.
+    """
+    try:
+        resp = api_session.get(f"{API_BASE}/second-brain/route", params={"q": query})
+        if resp.status_code == 200:
+            return str(resp.json().get("data", {}))
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error routing docs query (Is API Server running?): {e}"
+
+@mcp.tool()
+def build_docs_context_pack(query: str, limit: int = 12, mode: str = "lexical") -> str:
+    """
+    Build a bounded context pack for Codex/agents from routed official docs.
+    Does not live-scrape websites; uses local registered corpora only.
+    """
+    try:
+        payload = {"query": query, "limit": limit, "mode": mode}
+        resp = api_session.post(f"{API_BASE}/second-brain/context-pack", json=payload)
+        if resp.status_code == 200:
+            return str(resp.json())
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error building docs context pack (Is API Server running?): {e}"
+
+@mcp.tool()
+def inspect_corpus_status(corpus_id: str) -> str:
+    """
+    Inspect registry, acquisition, and crawl-plan status for a corpus.
+    Use to decide whether docs are ready for retrieval or need acquisition.
+    """
+    try:
+        resp = api_session.get(f"{API_BASE}/second-brain/corpora/{corpus_id}/status")
+        if resp.status_code == 200:
+            return str(resp.json())
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error inspecting corpus status (Is API Server running?): {e}"
+
 def ensure_api_running():
     import socket
     def is_port_in_use(port: int) -> bool:

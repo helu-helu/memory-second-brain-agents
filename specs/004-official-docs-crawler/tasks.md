@@ -8,9 +8,9 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Add crawl fixture site in `tests/fixtures/crawl-site/`
-- [ ] T002 Add crawl run contract test in `tests/test_crawler.py`
-- [ ] T003 Add crawler quickstart docs in `second-brain/docs/crawler-workflow.md`
+- [x] T001 Add crawl fixture site in `tests/fixtures/crawl-site/`
+- [x] T002 Add crawl run contract test in `tests/test_crawler.py`
+- [x] T003 Add crawler quickstart docs in `second-brain/docs/crawler-workflow.md`
 
 ---
 
@@ -18,9 +18,9 @@
 
 **Goal**: Crawler reads approved plans and refuses draft plans by default.
 
-- [ ] T004 Implement `scripts/crawl_official_docs.py`
-- [ ] T005 [P] [US1] Add tests for refusing draft plans in `tests/test_crawler.py`
-- [ ] T006 [P] [US1] Add tests for allowed-domain enforcement in `tests/test_crawler.py`
+- [x] T004 Implement `scripts/crawl_official_docs.py`
+- [x] T005 [P] [US1] Add tests for refusing draft plans in `tests/test_crawler.py`
+- [x] T006 [P] [US1] Add tests for allowed-domain enforcement in `tests/test_crawler.py`
 
 ---
 
@@ -28,10 +28,10 @@
 
 **Goal**: Crawler saves fetched HTML pages under the output path.
 
-- [ ] T007 [US2] Add local HTTP server test fixture in `tests/test_crawler.py`
-- [ ] T008 [US2] Save fetched pages to stable local paths in `scripts/crawl_official_docs.py`
-- [ ] T009 [US2] Write crawl run manifest under `second-brain/corpora/acquisitions/`
-- [ ] T010 [US2] Enforce `max_pages` and record limit warnings
+- [x] T007 [US2] Add local HTTP server test fixture in `tests/test_crawler.py`
+- [x] T008 [US2] Save fetched pages to stable local paths in `scripts/crawl_official_docs.py`
+- [x] T009 [US2] Write crawl run manifest under `second-brain/corpora/acquisitions/`
+- [x] T010 [US2] Enforce `max_pages` and record limit warnings
 
 ---
 
@@ -39,17 +39,17 @@
 
 **Goal**: Snapshot output is conversion-ready but conversion is not required.
 
-- [ ] T011 [US3] Include intended Markdown output path in crawl run manifest
-- [ ] T012 [US3] Document conversion handoff in `second-brain/docs/crawler-workflow.md`
-- [ ] T013 [US3] Ensure crawler does not update corpus status to indexed
+- [x] T011 [US3] Include intended Markdown output path in crawl run manifest
+- [x] T012 [US3] Document conversion handoff in `second-brain/docs/crawler-workflow.md`
+- [x] T013 [US3] Ensure crawler does not update corpus status to indexed
 
 ---
 
 ## Phase 5: Polish
 
-- [ ] T014 Run quickstart scenarios from `specs/004-official-docs-crawler/quickstart.md`
-- [ ] T015 Run full test suite and record warnings
-- [ ] T016 Review crawler artifacts for no-live-retrieval and approved-domain policy
+- [x] T014 Run quickstart scenarios from `specs/004-official-docs-crawler/quickstart.md`
+- [x] T015 Run full test suite and record warnings
+- [x] T016 Review crawler artifacts for no-live-retrieval and approved-domain policy
 
 ## Dependencies & Execution Order
 

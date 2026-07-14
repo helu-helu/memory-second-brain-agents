@@ -30,6 +30,7 @@ if project_root not in sys.path:
 from agent_core.memory import MemoryManager
 from agent_core.knowledge import KnowledgeBase
 from agent_core.config import config, DOCS_DIR, SKILLS_DIR, MODEL_REGISTRY
+from agent_core.access_tools import build_docs_context_pack, inspect_corpus_status, list_corpora, route_docs_query
 
 API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 API_KEY_NAME = config["app"]["api_key_name"]
@@ -141,6 +142,12 @@ class MemoryAddRequest(BaseModel):
     text: str
     user_id: Optional[str] = None
 
+class ContextPackRequest(BaseModel):
+    query: str
+    limit: int = 12
+    mode: str = "lexical"
+    out: Optional[str] = None
+
 @app.get("/rag/search")
 def rag_search(q: str, tags: list[str] = Query(None), requires_tier: str = None, requires_features: list[str] = Query(None), api_key: str = Depends(get_api_key)):
     """Search static RAG documents."""
@@ -219,6 +226,34 @@ async def context_build(q: str, user_id: Optional[str] = None, model_id: str = N
     except Exception as e:
         print(f"[Error] /context/build: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/second-brain/corpora")
+def second_brain_list_corpora(status: Optional[str] = None, product: Optional[str] = None, api_key: str = Depends(get_api_key)):
+    result = list_corpora(status=status, product=product)
+    if not result["ok"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result
+
+@app.get("/second-brain/route")
+def second_brain_route_query(q: str, api_key: str = Depends(get_api_key)):
+    result = route_docs_query(q)
+    if not result["ok"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+@app.post("/second-brain/context-pack")
+def second_brain_context_pack(req: ContextPackRequest, api_key: str = Depends(get_api_key)):
+    result = build_docs_context_pack(req.query, limit=req.limit, mode=req.mode, out=req.out)
+    if not result["ok"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+@app.get("/second-brain/corpora/{corpus_id}/status")
+def second_brain_corpus_status(corpus_id: str, api_key: str = Depends(get_api_key)):
+    result = inspect_corpus_status(corpus_id)
+    if not result["ok"]:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
 # --- Admin & MCP Tools Endpoints ---
 import subprocess

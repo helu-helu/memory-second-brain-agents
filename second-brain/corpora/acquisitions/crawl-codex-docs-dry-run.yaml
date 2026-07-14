@@ -1,0 +1,14 @@
+run_id: crawl-codex-docs-20260714031215
+plan_id: crawl-codex-docs
+corpus_id: codex-docs
+started_at: '2026-07-14T03:12:15.730819+00:00'
+status: dry_run
+output_path: docs/external/codex/snapshot-2026-07-14
+markdown_output_path: docs/external/codex/snapshot-2026-07-14-markdown
+fetched:
+- url: https://developers.openai.com/codex/
+  status_code: 0
+  path: ''
+  content_type: dry-run
+skipped: []
+warnings: []

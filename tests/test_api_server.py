@@ -61,3 +61,32 @@ def test_search_knowledge_success(mocker):
     )
     assert response.status_code == 200
     assert "[Source: test.txt]" in response.json()["result"]
+
+
+def test_second_brain_list_corpora():
+    response = client.get("/second-brain/corpora", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+    assert any(item["corpus_id"] == "unity-6.3" for item in response.json()["data"])
+
+
+def test_second_brain_route_query():
+    response = client.get("/second-brain/route?q=How do I use the Unity Input System?", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["data"]["selected_corpora"] == ["unity-6.3"]
+
+
+def test_second_brain_context_pack():
+    response = client.post(
+        "/second-brain/context-pack",
+        json={"query": "How do I use the Unity Input System?", "limit": 2, "out": "second-brain/demo/runs/api-context-pack.md"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["applied_sources"] <= 2
+
+
+def test_second_brain_corpus_status():
+    response = client.get("/second-brain/corpora/codex-docs/status", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["data"]["ready_for_retrieval"] is False
