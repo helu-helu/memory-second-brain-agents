@@ -29,9 +29,9 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from agent_core.memory import MemoryManager
-from agent_core.knowledge import KnowledgeBase
+from agent_core.rag import KnowledgeBase
 from agent_core.config import config, DOCS_DIR, SKILLS_DIR, MODEL_REGISTRY
-from agent_core.access_tools import build_active_memory_pack, build_agent_bootstrap, build_docs_context_pack, inspect_corpus_status, inspect_second_brain_status, list_corpora, record_agent_handoff, route_docs_query
+from agent_core.access import build_active_memory_pack, build_agent_bootstrap, build_docs_context_pack, inspect_corpus_status, inspect_second_brain_status, list_corpora, record_agent_handoff, route_docs_query
 
 API_KEY = os.environ.get("APP_API_KEY", "my-super-secret-key-123")
 API_KEY_NAME = config["app"]["api_key_name"]
@@ -227,7 +227,7 @@ def memory_all(user_id: Optional[str] = None, api_key: str = Depends(get_api_key
 async def context_build(q: str, user_id: Optional[str] = None, model_id: str = None, api_key: str = Depends(get_api_key)):
     """Build system prompt in parallel using Asyncio."""
     try:
-        from agent_core.context_builder import ContextBuilder
+        from agent_core.context import ContextBuilder
         mem = get_memory(user_id)
         kb = get_knowledge()
         ctx_builder = ContextBuilder(memory=mem, knowledge=kb)
@@ -269,7 +269,7 @@ def second_brain_route_query(q: str, api_key: str = Depends(get_api_key)):
 async def second_brain_context_pack(req: ContextPackRequest, api_key: str = Depends(get_api_key)):
     context_result = None
     if req.mode in {"runtime", "hybrid", "vector"}:
-        from agent_core.context_builder import ContextBuilder
+        from agent_core.context import ContextBuilder
 
         ctx_builder = ContextBuilder(memory=get_memory(), knowledge=get_knowledge())
         context_result = await ctx_builder.build_result_async(req.query)

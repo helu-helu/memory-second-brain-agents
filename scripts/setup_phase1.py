@@ -111,7 +111,7 @@ def check_knowledge():
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write("Unity 6.3 new 2D physics system runs on local port 8000")
             
-        from agent_core.knowledge import KnowledgeBase
+        from agent_core.rag import KnowledgeBase
         kb = KnowledgeBase()
         ok = kb.load(input_files=[temp_file])
         if not ok:

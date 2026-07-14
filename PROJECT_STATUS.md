@@ -31,12 +31,13 @@ Current spec-kit coverage:
 - `011-agent-bootstrap-context`
 - `012-agent-handoff-records`
 - `013-unify-agent-runtime`
+- `014-physical-runtime-restructure`
 
-Specs 001-012 are complete. Spec 013 is active and in progress.
+Specs 001-014 are complete.
 
 ## Active Next Phase
 
-Feature `013-unify-agent-runtime` is the active Phase 2 preparation track.
+Feature `014-physical-runtime-restructure` completed the active Phase 2 cleanup track.
 
 Decision:
 
@@ -44,11 +45,14 @@ Decision:
 - Treat `agent_core` as the runtime source of truth for memory, knowledge retrieval, context building, and model routing.
 - Treat `second-brain/` as the file-first data, audit, review, corpus, skills, and spec workspace.
 - Do not continue building an independent lexical/manual retrieval runtime in parallel with LlamaIndex/Qdrant/Mem0.
+- The root `README.md` was intentionally removed because it encoded stale architecture direction. Do not use it as the source of truth; use spec-kit artifacts and future validated architecture notes instead.
+- Feature 014 corrects the physical folder structure with compatibility shims. It does not add new retrieval behavior.
 
 Start rule:
 
-- Begin with the contract-first consolidation tasks in `specs/013-unify-agent-runtime/tasks.md`.
-- Do not delete duplicate paths until a replacement runtime-backed path is documented and tested.
+- Begin with the compatibility-first restructure tasks in `specs/014-physical-runtime-restructure/tasks.md`.
+- Do not move high-risk `agent_core.memory` until import compatibility tests exist.
+- Do not delete duplicate module paths until a replacement path has a passing representative test and has lived behind a shim for at least one later feature cycle.
 
 ## Validation
 
@@ -62,6 +66,9 @@ Focused 013 tests -> 40 passed
 Focused memory/knowledge/API/context-pack tests -> 51 passed
 MCP thin smoke -> 18 tools, route OK, lexical context-pack export OK
 Mocked runtime MCP smoke -> pass
+Feature 014 import compatibility -> 4 passed
+Feature 014 focused restructure tests -> 44 passed
+Full suite after feature 014 restructure -> 101 passed
 ```
 
 The test suite is warning-free.
@@ -78,6 +85,13 @@ Testing policy:
 
 Do not automatically add new product features after Phase 1. The selected Phase
 2 work is consolidation only: unify runtime ownership, contracts, API/MCP
-behavior, and context-pack export paths.
+behavior, context-pack export paths, and the physical runtime folder structure.
+
+For feature 014 specifically:
+
+- Do not rename REST routes or MCP tools.
+- Do not move `second-brain/` or `db/`.
+- Do not delete compatibility shims.
+- Do not run full official-docs corpus scans as unit validation.
 
 See `MVP_BOUNDARY_AND_ROADMAP.md` for Phase 2 options.
