@@ -281,6 +281,20 @@ def build_active_memory_pack(query: str, limit: int = 5) -> str:
     except Exception as e:
         return f"Error building active memory pack (Is API Server running?): {e}"
 
+@mcp.tool()
+def inspect_second_brain_status() -> str:
+    """
+    Inspect current second-brain lifecycle status: active memory, candidates,
+    review decisions, memory packs, and registered corpora.
+    """
+    try:
+        resp = api_session.get(f"{API_BASE}/second-brain/status")
+        if resp.status_code == 200:
+            return str(resp.json())
+        return f"API Error: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        return f"Error inspecting second-brain status (Is API Server running?): {e}"
+
 def ensure_api_running():
     import socket
     def is_port_in_use(port: int) -> bool:

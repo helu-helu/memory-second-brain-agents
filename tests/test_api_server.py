@@ -114,3 +114,12 @@ def test_second_brain_memory_pack():
     )
     assert response.status_code == 200
     assert response.json()["data"]["applied_items"] <= 2
+
+
+def test_second_brain_status():
+    response = request("GET", "/second-brain/status", headers=headers)
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "memory" in data
+    assert "reviews" in data
+    assert "corpora" in data

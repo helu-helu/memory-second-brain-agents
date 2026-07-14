@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agent_core.access_tools import build_active_memory_pack, build_docs_context_pack, inspect_corpus_status, list_corpora, response, route_docs_query
+from agent_core.access_tools import build_active_memory_pack, build_docs_context_pack, inspect_corpus_status, inspect_second_brain_status, list_corpora, response, route_docs_query
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,3 +66,12 @@ def test_build_active_memory_pack_writes_pack():
     assert result["data"]["path"] == out
     assert result["data"]["applied_items"] <= 3
     assert (ROOT / out).exists()
+
+
+def test_inspect_second_brain_status_returns_lifecycle_summary():
+    result = inspect_second_brain_status()
+    assert result["ok"]
+    assert "memory" in result["data"]
+    assert "reviews" in result["data"]
+    assert "corpora" in result["data"]
+    assert "by_status" in result["data"]["memory"]
