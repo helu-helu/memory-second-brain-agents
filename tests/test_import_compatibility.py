@@ -31,6 +31,26 @@ def test_memory_public_import_path_survives_package_move():
 
 def test_stable_mcp_entrypoint_imports():
     module = importlib.import_module("second_brain_mcp")
+    required_tools = [
+        "search_knowledge",
+        "search_memory",
+        "add_memory",
+        "save_verified_workflow",
+        "deprecate_workflow",
+        "search_workflows",
+        "convert_docs_to_md",
+        "build_massive_index",
+        "open_dashboard",
+        "list_corpora",
+        "route_docs_query",
+        "build_docs_context_pack",
+        "build_unified_context",
+        "inspect_corpus_status",
+        "build_active_memory_pack",
+        "inspect_second_brain_status",
+        "build_agent_bootstrap",
+        "record_agent_handoff",
+    ]
 
-    assert hasattr(module, "build_docs_context_pack")
-    assert hasattr(module, "build_unified_context")
+    for tool_name in required_tools:
+        assert hasattr(module, tool_name)

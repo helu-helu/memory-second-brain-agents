@@ -15,6 +15,9 @@ full test suite -> pass
 MCP stdio initialize/list_tools/call_tool -> pass
 MCP thin smoke after feature 013 -> pass
 Mocked runtime MCP smoke -> pass
+Feature 015 fast MCP validation -> 5 passed
+Feature 015 full suite gate -> 101 passed
+Feature 015 real-runtime representative query -> degraded; local API runtime timed out after ~90 seconds
 ```
 
 ## Server Command
@@ -92,3 +95,6 @@ Validated MCP tool list includes:
   use small representative tests or mocks before full local runtime validation.
 - `tests/test_mcp_runtime_smoke.py` is the small mocked runtime smoke for route,
   knowledge search, memory search, unified context, and context-pack export.
+- Feature 015 confirms mocked MCP/tool-surface readiness after package restructure.
+  Real local runtime validation is still an operational check and may need a
+  longer explicit run or narrower API-only steps.

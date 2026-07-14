@@ -62,7 +62,7 @@ class FakeSession:
 def test_mocked_mcp_runtime_smoke(monkeypatch):
     monkeypatch.setattr(second_brain_mcp, "api_session", FakeSession())
 
-    query = "How do I use the Unity Input System?"
+    query = "I want to create a separate camera for each user in a Unity 6.3 multiplayer game."
 
     assert "unity-6.3" in second_brain_mcp.route_docs_query(query)
     assert "[Source: unity.md]" in second_brain_mcp.search_knowledge(query)

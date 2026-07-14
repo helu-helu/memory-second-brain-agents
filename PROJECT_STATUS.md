@@ -32,12 +32,13 @@ Current spec-kit coverage:
 - `012-agent-handoff-records`
 - `013-unify-agent-runtime`
 - `014-physical-runtime-restructure`
+- `015-mcp-post-restructure-validation`
 
-Specs 001-014 are complete.
+Specs 001-015 are complete.
 
 ## Active Next Phase
 
-Feature `014-physical-runtime-restructure` completed the active Phase 2 cleanup track.
+Feature `015-mcp-post-restructure-validation` completed the Phase 2 validation track.
 
 Decision:
 
@@ -47,12 +48,13 @@ Decision:
 - Do not continue building an independent lexical/manual retrieval runtime in parallel with LlamaIndex/Qdrant/Mem0.
 - The root `README.md` was intentionally removed because it encoded stale architecture direction. Do not use it as the source of truth; use spec-kit artifacts and future validated architecture notes instead.
 - Feature 014 corrects the physical folder structure with compatibility shims. It does not add new retrieval behavior.
+- Feature 015 validates Codex/MCP access after the package restructure before any new product feature is added.
 
 Start rule:
 
-- Begin with the compatibility-first restructure tasks in `specs/014-physical-runtime-restructure/tasks.md`.
-- Do not move high-risk `agent_core.memory` until import compatibility tests exist.
-- Do not delete duplicate module paths until a replacement path has a passing representative test and has lived behind a shim for at least one later feature cycle.
+- Begin with MCP validation tasks in `specs/015-mcp-post-restructure-validation/tasks.md`.
+- Prefer mocked/small representative checks before any real-runtime validation.
+- Do not scan full official docs corpora for feature 015 validation.
 
 ## Validation
 
@@ -69,6 +71,9 @@ Mocked runtime MCP smoke -> pass
 Feature 014 import compatibility -> 4 passed
 Feature 014 focused restructure tests -> 44 passed
 Full suite after feature 014 restructure -> 101 passed
+Feature 015 fast MCP validation -> 5 passed
+Feature 015 full suite gate -> 101 passed
+Feature 015 real-runtime representative query -> degraded: timed out after ~90 seconds against local API runtime
 ```
 
 The test suite is warning-free.
