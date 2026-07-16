@@ -73,7 +73,7 @@ Feature 014 focused restructure tests -> 44 passed
 Full suite after feature 014 restructure -> 101 passed
 Feature 015 fast MCP validation -> 5 passed
 Feature 015 full suite gate -> 101 passed
-Feature 015 real-runtime representative query -> degraded: timed out after ~90 seconds against local API runtime
+Feature 015 real-runtime representative query -> degraded: bounded 504 timeout after 20 seconds against local API runtime
 ```
 
 The test suite is warning-free.

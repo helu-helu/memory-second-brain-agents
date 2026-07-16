@@ -1,6 +1,7 @@
 import pytest
 import asyncio
 import httpx
+import time
 from unittest.mock import MagicMock
 
 from api.api_server import app, get_memory, get_knowledge, _memory_managers
@@ -92,6 +93,22 @@ def test_context_build_returns_prompt_and_unified_context(mocker):
     assert data["context"]["query"] == "Unity Input System"
     assert data["context"]["memory_hits"]
     assert data["context"]["knowledge_hits"][0]["source"] == "unity.md"
+
+
+def test_context_build_times_out_when_runtime_load_blocks(mocker):
+    mock_mem = MagicMock()
+    mocker.patch("api.api_server.get_memory", return_value=mock_mem)
+    mocker.patch("api.api_server.RUNTIME_CONTEXT_TIMEOUT_SECONDS", 0.01)
+
+    def slow_knowledge():
+        time.sleep(0.1)
+        return MagicMock()
+
+    mocker.patch("api.api_server.get_knowledge", side_effect=slow_knowledge)
+
+    response = request("GET", "/context/build?q=Unity Input System", headers=headers)
+
+    assert response.status_code == 504
 
 
 def test_second_brain_list_corpora():

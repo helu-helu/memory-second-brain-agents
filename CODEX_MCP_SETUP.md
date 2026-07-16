@@ -17,7 +17,7 @@ MCP thin smoke after feature 013 -> pass
 Mocked runtime MCP smoke -> pass
 Feature 015 fast MCP validation -> 5 passed
 Feature 015 full suite gate -> 101 passed
-Feature 015 real-runtime representative query -> degraded; local API runtime timed out after ~90 seconds
+Feature 015 real-runtime representative query -> degraded with bounded 504 timeout after 20 seconds
 ```
 
 ## Server Command
@@ -98,3 +98,5 @@ Validated MCP tool list includes:
 - Feature 015 confirms mocked MCP/tool-surface readiness after package restructure.
   Real local runtime validation is still an operational check and may need a
   longer explicit run or narrower API-only steps.
+- Runtime context calls are bounded by `SECOND_BRAIN_RUNTIME_CONTEXT_TIMEOUT`
+  and return `504` on timeout instead of blocking lightweight API/MCP paths.

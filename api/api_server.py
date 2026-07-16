@@ -8,6 +8,7 @@ Run: uvicorn api_server:app --host 127.0.0.1 --port 8000
 
 import os
 import sys
+import asyncio
 import threading
 import time
 import yaml
@@ -45,6 +46,7 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
 # Lazy initialization
 _memory_managers = {}
 _knowledge_base = None
+RUNTIME_CONTEXT_TIMEOUT_SECONDS = int(os.getenv("SECOND_BRAIN_RUNTIME_CONTEXT_TIMEOUT", "20"))
 
 def get_memory(user_id: str = None):
     target_user = user_id or os.getenv("MEM0_USER_ID", "personal_user")
@@ -58,6 +60,32 @@ def get_knowledge():
         _knowledge_base = KnowledgeBase()
         _knowledge_base.load()
     return _knowledge_base
+
+async def build_runtime_context_result(q: str, user_id: str | None = None, model_id: str | None = None) -> dict:
+    mem = get_memory(user_id)
+    kb = await asyncio.wait_for(
+        asyncio.to_thread(get_knowledge),
+        timeout=RUNTIME_CONTEXT_TIMEOUT_SECONDS,
+    )
+
+    from agent_core.context import ContextBuilder
+    ctx_builder = ContextBuilder(memory=mem, knowledge=kb)
+
+    requires = None
+    if model_id and "available_models" in MODEL_REGISTRY:
+        for model_info in MODEL_REGISTRY["available_models"]:
+            if model_info.get("id") == model_id:
+                requires = {
+                    "tier": model_info.get("tier"),
+                    "features": model_info.get("features", [])
+                }
+                print(f"[Router] Mapped model {model_id} to capabilities: {requires}")
+                break
+
+    return await asyncio.wait_for(
+        ctx_builder.build_result_async(q, requires=requires),
+        timeout=RUNTIME_CONTEXT_TIMEOUT_SECONDS,
+    )
 
 _reload_timer = None
 
@@ -227,26 +255,10 @@ def memory_all(user_id: Optional[str] = None, api_key: str = Depends(get_api_key
 async def context_build(q: str, user_id: Optional[str] = None, model_id: str = None, api_key: str = Depends(get_api_key)):
     """Build system prompt in parallel using Asyncio."""
     try:
-        from agent_core.context import ContextBuilder
-        mem = get_memory(user_id)
-        kb = get_knowledge()
-        ctx_builder = ContextBuilder(memory=mem, knowledge=kb)
-        
-        # Capability-Based Routing mapping
-        requires = None
-        if model_id and "available_models" in MODEL_REGISTRY:
-            for model_info in MODEL_REGISTRY["available_models"]:
-                if model_info.get("id") == model_id:
-                    requires = {
-                        "tier": model_info.get("tier"),
-                        "features": model_info.get("features", [])
-                    }
-                    print(f"[Router] Mapped model {model_id} to capabilities: {requires}")
-                    break
-        
-        # Gọi song song để giảm nửa thời gian chờ
-        context = await ctx_builder.build_result_async(q, requires=requires)
+        context = await build_runtime_context_result(q, user_id=user_id, model_id=model_id)
         return {"prompt": context["prompt_context"], "context": context}
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Runtime context build timed out")
     except Exception as e:
         print(f"[Error] /context/build: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -269,10 +281,10 @@ def second_brain_route_query(q: str, api_key: str = Depends(get_api_key)):
 async def second_brain_context_pack(req: ContextPackRequest, api_key: str = Depends(get_api_key)):
     context_result = None
     if req.mode in {"runtime", "hybrid", "vector"}:
-        from agent_core.context import ContextBuilder
-
-        ctx_builder = ContextBuilder(memory=get_memory(), knowledge=get_knowledge())
-        context_result = await ctx_builder.build_result_async(req.query)
+        try:
+            context_result = await build_runtime_context_result(req.query)
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=504, detail="Runtime context pack build timed out")
     result = build_docs_context_pack(req.query, limit=req.limit, mode=req.mode, out=req.out, context_result=context_result)
     if not result["ok"]:
         raise HTTPException(status_code=400, detail=result["error"])
